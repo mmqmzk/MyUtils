@@ -9,6 +9,9 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -87,30 +90,101 @@ public class Utils {
 	/**
 	 * 等概率随机选一个
 	 *
-	 * @param list
+	 * @param array
 	 * @param <T>
 	 * @return
 	 */
-	public static <T> T randomChoose(T[] list) {
-		if (list == null || list.length == 0) {
+	public static <T> T randomChoose(T[] array) {
+		if (array == null || array.length == 0) {
 			return null;
 		}
-		int index = nextInt(list.length);
-		return list[index];
+		int index = nextInt(array.length);
+		return array[index];
 	}
 
 	/**
 	 * 等概率随机选一个
 	 *
-	 * @param list
+	 * @param ints
 	 * @return
 	 */
-	public static int randomChoose(int[] list) {
-		if (list == null || list.length == 0) {
+	public static int randomChoose(int[] ints) {
+		if (ints == null || ints.length == 0) {
 			throw new IllegalArgumentException();
 		}
-		int index = nextInt(list.length);
-		return list[index];
+		int index = nextInt(ints.length);
+		return ints[index];
+	}
+
+	/**
+	 * 等概率随机选择n个
+	 * @param list
+	 * @param n
+	 * @param <T>
+	 * @return
+	 */
+	public static <T> List<T> randomChooseN(List<T> list, int n) {
+		if (list == null || n <= 0) {
+			return Collections.emptyList();
+		}
+		if (list.isEmpty() || list.size() <= n) {
+			return list;
+		}
+		List<T> result = new ArrayList<>(n);
+		for (int i = list.size(); i > 0 && n > 0; i--) {
+			if (nextInt(i) < n) {
+				result.add(list.get(i - 1));
+				n--;
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * 等概率随机选择n个
+	 * @param array
+	 * @param n
+	 * @param <T>
+	 * @return
+	 */
+	public static <T> List<T> randomChooseN(T[] array, int n) {
+		if (array == null || array.length == 0 || n <= 0) {
+			return Collections.emptyList();
+		}
+		if (array.length <= n) {
+			return Arrays.asList(array);
+		}
+		List<T> result = new ArrayList<>(n);
+		for (int i = array.length; i > 0 && n > 0; i--) {
+			if (nextInt(i) < n) {
+				result.add(array[i - 1]);
+				n--;
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * 等概率随机选择n个
+	 * @param ints
+	 * @param n
+	 * @return
+	 */
+	public static List<Integer> randomChooseN(int[] ints, int n) {
+		if (ints == null || ints.length == 0 || n <= 0) {
+			return Collections.emptyList();
+		}
+		if (ints.length <= n) {
+			return Ints.asList(ints);
+		}
+		List<Integer> result = new ArrayList<>(n);
+		for (int i = ints.length; i > 0 && n > 0; i--) {
+			if (nextInt(i) < n) {
+				result.add(ints[i - 1]);
+				n--;
+			}
+		}
+		return result;
 	}
 
 	/**
@@ -444,7 +518,7 @@ public class Utils {
 	//=============================================================================================
 
 	public static String getStackTrace() {
-		return getStackTrace(0, 10);
+		return getStackTrace(1, 10);
 	}
 
 	public static String getStackTrace(int start, int stop) {
