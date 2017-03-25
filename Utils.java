@@ -127,13 +127,14 @@ public class Utils {
 		if (list == null || n <= 0) {
 			return Collections.emptyList();
 		}
-		if (list.isEmpty() || list.size() <= n) {
+		int size = list.size();
+		if (list.size() <= n) {
 			return list;
 		}
 		List<T> result = new ArrayList<>(n);
-		for (int i = list.size(); i > 0 && n > 0; i--) {
-			if (nextInt(i) < n) {
-				result.add(list.get(i - 1));
+		for (int i = 0; i < list.size() && n > 0; i++) {
+			if (nextInt(size - i) < n) {
+				result.add(list.get(i));
 				n--;
 			}
 		}
@@ -148,16 +149,17 @@ public class Utils {
 	 * @return
 	 */
 	public static <T> List<T> randomChooseN(T[] array, int n) {
-		if (array == null || array.length == 0 || n <= 0) {
+		int length;
+		if (array == null || (length = array.length) == 0 || n <= 0) {
 			return Collections.emptyList();
 		}
-		if (array.length <= n) {
+		if (length <= n) {
 			return Arrays.asList(array);
 		}
 		List<T> result = new ArrayList<>(n);
-		for (int i = array.length; i > 0 && n > 0; i--) {
-			if (nextInt(i) < n) {
-				result.add(array[i - 1]);
+		for (int i = 0; i< length && n > 0; i++) {
+			if (nextInt(length - i) < n) {
+				result.add(array[i]);
 				n--;
 			}
 		}
@@ -171,16 +173,17 @@ public class Utils {
 	 * @return
 	 */
 	public static List<Integer> randomChooseN(int[] ints, int n) {
-		if (ints == null || ints.length == 0 || n <= 0) {
+		int length;
+		if (ints == null || (length = ints.length) == 0 || n <= 0) {
 			return Collections.emptyList();
 		}
-		if (ints.length <= n) {
+		if (length <= n) {
 			return Ints.asList(ints);
 		}
 		List<Integer> result = new ArrayList<>(n);
-		for (int i = ints.length; i > 0 && n > 0; i--) {
-			if (nextInt(i) < n) {
-				result.add(ints[i - 1]);
+		for (int i = 0; i < length && n > 0; i++) {
+			if (nextInt(length - i) < n) {
+				result.add(ints[i]);
 				n--;
 			}
 		}
@@ -221,14 +224,6 @@ public class Utils {
 		return null;
 	}
 
-	public static int randomChooseByRate(int[] ints, int[] rates) {
-		if (ints == null || ints.length == 0 || rates == null || rates.length == 0 || ints.length < rates.length) {
-			throw new IllegalArgumentException();
-		}
-		int index = randomIndex(rates);
-		return ints[index];
-	}
-
 	public static <T> T randomChooseByRate(List<T> items, int[] rates) {
 		if (items == null || rates == null) {
 			return null;
@@ -239,14 +234,18 @@ public class Utils {
 		}
 		return null;
 	}
-	/**
-	 * 以对应索引上的概率选择物品
-	 *
-	 * @param items
-	 * @param rates
-	 * @param <T>
-	 * @return
-	 */
+
+	public static <T> T randomChooseByRate(T[] items, List<Integer> rates) {
+		if (items == null || rates == null) {
+			return null;
+		}
+		int index = randomIndex(rates);
+		if (index >= 0 && index < items.length) {
+			return items[index];
+		}
+		return null;
+	}
+
 	public static <T> T randomChooseByRate(T[] items, int[] rates) {
 		if (items == null || rates == null) {
 			return null;
@@ -256,6 +255,14 @@ public class Utils {
 			return items[index];
 		}
 		return null;
+	}
+
+	public static int randomChooseByRate(int[] ints, int[] rates) {
+		if (ints == null || ints.length == 0 || rates == null || rates.length == 0 || ints.length < rates.length) {
+			throw new IllegalArgumentException();
+		}
+		int index = randomIndex(rates);
+		return ints[index];
 	}
 
 	/**
@@ -380,7 +387,7 @@ public class Utils {
 			return (Number) object;
 		} else if (object instanceof Boolean) {
 			Boolean aBoolean = (Boolean) object;
-			return aBoolean ? 0 : 1;
+			return aBoolean ? 1 : 0;
 		} else if (object instanceof BigInteger) {
 			BigInteger bigInteger = (BigInteger) object;
 			return bigInteger.longValue();
@@ -526,7 +533,7 @@ public class Utils {
 			throw new IllegalArgumentException("start > stop");
 		}
 		StringBuilder builder = new StringBuilder((stop - start + 1) * 50);
-		StackTraceElement[] stackTrace = new RuntimeException().getStackTrace();
+		StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
 		if (stackTrace.length < start + 2) {
 			return builder.toString();
 		}
@@ -542,9 +549,11 @@ public class Utils {
 		String className = element.getClassName();
 		String methodName = element.getMethodName();
 		int index = className.lastIndexOf('.');
-		builder.append(className.substring(index + 1));
-		builder.append('.').append(methodName);
-		builder.append(':').append(element.getLineNumber());
+		builder.append(className.substring(index + 1))
+				.append('.')
+				.append(methodName)
+				.append(':')
+				.append(element.getLineNumber());
 	}
 
 	//=============================================================================================
