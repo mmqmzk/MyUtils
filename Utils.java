@@ -74,16 +74,16 @@ public class Utils {
     /**
      * 等概率随机选一个
      *
-     * @param list
+     * @param col
      * @param <T>
      * @return
      */
-    public static <T> T randomChoose(List<T> list) {
-        if (list == null || list.isEmpty()) {
+    public static <T> T randomChoose(Collection<T> col) {
+        if (col == null || col.isEmpty()) {
             return null;
         }
-        int index = nextInt(list.size());
-        return list.get(index);
+        int index = nextInt(col.size());
+        return get(col, index);
     }
 
     /**
@@ -125,15 +125,40 @@ public class Utils {
      * @return
      */
     public static <T> List<T> randomChooseN(List<T> list, int n) {
-        if (list == null || n <= 0) {
+        if (list == null || list.isEmpty() || n <= 0) {
             return Collections.emptyList();
         }
         int size = list.size();
         List<T> result = new ArrayList<>(n);
-        for (int i = 0; i < list.size() && n > 0; i++) {
+        for (int i = 0; i < size && n > 0; i++) {
             if (nextInt(size - i) < n) {
                 result.add(list.get(i));
                 n--;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 等概率随机选择n个
+     *
+     * @param col
+     * @param n
+     * @param <T>
+     * @return
+     */
+    public static <T> List<T> randomChooseN(Collection<T> col, int n) {
+        if (col == null || col.isEmpty() || n <= 0) {
+            return Collections.emptyList();
+        }
+        int size = col.size();
+        List<T> result = new ArrayList<>(n);
+        for (T t : col)
+            if (nextInt(size--) < n) {
+                result.add(t);
+                if (--n <= 0) {
+                    break;
+                }
             }
         }
         return result;
@@ -705,6 +730,8 @@ public class Utils {
         return get(array, index, 0);
     }
 
+    //=============================================================================================
+
     public static int get(int[] array, int index, int defaultValue) {
         if (array == null) {
             return defaultValue;
@@ -751,13 +778,5 @@ public class Utils {
         }
         T t = Iterables.get(collection, index);
         return t == null ? defaultValue : t;
-    }
-
-    public static String listToString(List<String> strings, char separator) {
-        return StringUtils.join(strings, separator);
-    }
-
-    public static List<String> stringToList(String str, String separator) {
-        return java.util.Arrays.asList(str.split(separator));
     }
 }
