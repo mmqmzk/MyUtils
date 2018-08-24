@@ -160,7 +160,7 @@ public class Sort
         int key = array[r];
         swap(array, r, q);
         int index = p;
-        for(int i = index; i < q; i++)
+        for(int i = index + 1; i < q; i++)
             if(array[i] < key)
                 swap(array, i, index++);
         swap(array, index, q);

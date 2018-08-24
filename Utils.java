@@ -125,7 +125,7 @@ public class Utils {
      * @return
      */
     public static <T> List<T> randomChooseN(List<T> list, int n) {
-        if (list == null || list.isEmpty() || n <= 0) {
+        if (list == null || n <= 0) {
             return Collections.emptyList();
         }
         int size = list.size();
@@ -148,17 +148,17 @@ public class Utils {
      * @return
      */
     public static <T> List<T> randomChooseN(Collection<T> col, int n) {
-        if (col == null || col.isEmpty() || n <= 0) {
+        if (col == null || n <= 0) {
             return Collections.emptyList();
         }
         int size = col.size();
         List<T> result = new ArrayList<>(n);
-        for (T t : col)
-            if (nextInt(size--) < n) {
-                result.add(t);
-                if (--n <= 0) {
-                    break;
-                }
+        Iterator<T> iterator = col.iterator();
+        for (int i = 0; i < size && iterator.hasNext() && n > 0; i++) {
+            T next = iterator.next();
+            if (nextInt(size - i) < n) {
+                result.add(next);
+                n--;
             }
         }
         return result;
@@ -176,9 +176,6 @@ public class Utils {
         int length;
         if (array == null || (length = array.length) == 0 || n <= 0) {
             return Collections.emptyList();
-        }
-        if (length <= n) {
-            return Arrays.asList(array);
         }
         List<T> result = new ArrayList<>(n);
         for (int i = 0; i < length && n > 0; i++) {
@@ -201,9 +198,6 @@ public class Utils {
         int length;
         if (ints == null || (length = ints.length) == 0 || n <= 0) {
             return Collections.emptyList();
-        }
-        if (length <= n) {
-            return Ints.asList(ints);
         }
         List<Integer> result = new ArrayList<>(n);
         for (int i = 0; i < length && n > 0; i++) {
@@ -730,8 +724,6 @@ public class Utils {
         return get(array, index, 0);
     }
 
-    //=============================================================================================
-
     public static int get(int[] array, int index, int defaultValue) {
         if (array == null) {
             return defaultValue;
@@ -779,4 +771,226 @@ public class Utils {
         T t = Iterables.get(collection, index);
         return t == null ? defaultValue : t;
     }
+
+    /**
+     * 返回列表中第k小的元素, 并将列表按第k小元素划分
+     *
+     * @param list
+     * @param comparator
+     * @param k
+     * @param <T>
+     * @return
+     */
+    public static <T> T selectKth(List<T> list, Comparator<T> comparator, int k) {
+        int index = selectKthIndex(list, comparator, k);
+        if (index >= 0 && index < list.size()) {
+            return list.get(index);
+        }
+        return null;
+    }
+
+    /**
+     * 返回列表中第k小的元素的下标, 并将列表按第k小元素划分
+     *
+     * @param list
+     * @param comparator
+     * @param k
+     * @param <T>
+     * @return
+     */
+    public static <T> int selectKthIndex(List<T> list, Comparator<T> comparator, int k) {
+        if (list == null || list.isEmpty()) {
+            return -1;
+        }
+        return selectIndex(list, comparator, 0, list.size() - 1, k);
+    }
+
+
+    /**
+     * 返回数组中第k小的元素, 并将数组按第k小元素划分
+     *
+     * @param array
+     * @param comparator
+     * @param k
+     * @param <T>
+     * @return
+     */
+    public static <T> T selectKth(T[] array, Comparator<T> comparator, int k) {
+        int index = selectKthIndex(array, comparator, k);
+        if (index >= 0 && index < array.length) {
+            return array[index];
+        }
+        return null;
+    }
+
+    /**
+     * 返回数组中第k小的元素的下标, 并将数组按第k小元素划分
+     *
+     * @param array
+     * @param comparator
+     * @param k
+     * @param <T>
+     * @return
+     */
+    public static <T> int selectKthIndex(T[] array, Comparator<T> comparator, int k) {
+        if (array == null || array.length == 0) {
+            return -1;
+        }
+        return selectIndex(array, comparator, 0, array.length - 1, k);
+    }
+
+    /**
+     * 返回列表中m到n下标之间第i小元素, 并将m到n间元素按第i小元素划分
+     *
+     * @param list
+     * @param comparator
+     * @param m
+     * @param n
+     * @param i
+     * @param <T>
+     * @return
+     */
+    public static <T> T select(List<T> list, Comparator<T> comparator, int m, int n, int i) {
+        int index = selectIndex(list, comparator, m, n, i);
+        if (index >= 0 && index < list.size()) {
+            return list.get(index);
+        }
+        return null;
+    }
+
+    /**
+     * 返回列表m到n下标之间第i小元素的下标, 并将m到n间元素按第i大元素划分
+     *
+     * @param list
+     * @param comparator
+     * @param m
+     * @param n
+     * @param i
+     * @param <T>
+     * @return
+     */
+    public static <T> int selectIndex(List<T> list, Comparator<T> comparator, int m, int n, int i) {
+        if (list == null || list.isEmpty() || comparator == null || n < m || n < 0 || m < 0) {
+            return -1;
+        }
+        if (m == n) {
+            return m;
+        }
+        int len = n - m + 1;
+        if (i < 0) {
+            i += len;
+        }
+        if (i < 0) {
+            i = 0;
+        } else if (i > len) {
+            i = len;
+        }
+        int index = partition(list, comparator, m, n);
+        int k = index - m + 1;
+        if (k == i) {
+            return index;
+        } else if (k > i) {
+            return selectIndex(list, comparator, m, index - 1, i);
+        } else {
+            return selectIndex(list, comparator, index + 1, n, i - k);
+        }
+    }
+
+    private static <T> int partition(List<T> list, Comparator<T> comparator, int m, int n) {
+        int r = random(m, n);
+        T key = list.get(r);
+        swap(list, r, n);
+        int index = m;
+        for (int i = index + 1; i < n; i++) {
+            if (comparator.compare(list.get(i), key) < 0) {
+                swap(list, i, index++);
+            }
+        }
+        swap(list, index, n);
+        return index;
+    }
+
+    private static <T> void swap(List<T> list, int m, int n) {
+        T tmp = list.get(m);
+        list.set(m, list.get(n));
+        list.set(n, tmp);
+    }
+
+    /**
+     * 返回数组中m到n下标之间第i小元素, 并将m到n间元素按第i小元素划分
+     *
+     * @param array
+     * @param comparator
+     * @param m
+     * @param n
+     * @param i
+     * @param <T>
+     * @return
+     */
+    public static <T> T select(T[] array, Comparator<T> comparator, int m, int n, int i) {
+        int index = selectIndex(array, comparator, m, n, i);
+        if (index >= 0 && index < array.length) {
+            return array[index];
+        }
+        return null;
+    }
+
+    /**
+     * 返回数组中m到n下标之间第i小元素的下标, 并将m到n间元素按第i小元素划分
+     *
+     * @param array
+     * @param comparator
+     * @param m
+     * @param n
+     * @param i
+     * @param <T>
+     * @return
+     */
+    public static <T> int selectIndex(T[] array, Comparator<T> comparator, int m, int n, int i) {
+        if (array == null || array.length <= 0 || comparator == null || n < m || n < 0 || m < 0) {
+            return -1;
+        }
+        if (m == n) {
+            return m;
+        }
+        int len = n - m + 1;
+        if (i < 0) {
+            i += len;
+        }
+        if (i < 0) {
+            i = 0;
+        } else if (i > len) {
+            i = len;
+        }
+        int index = partition(array, comparator, m, n);
+        int k = index - m + 1;
+        if (k == i) {
+            return index;
+        } else if (k > i) {
+            return selectIndex(array, comparator, m, index - 1, i);
+        } else {
+            return selectIndex(array, comparator, index + 1, n, i - k);
+        }
+    }
+
+    private static <T> int partition(T[] array, Comparator<T> comparator, int m, int n) {
+        int r = random(m, n);
+        T key = array[r];
+        swap(array, r, n);
+        int index = m;
+        for (int i = index + 1; i < n; i++) {
+            if (comparator.compare(array[i], key) < 0) {
+                swap(array, i, index++);
+            }
+        }
+        swap(array, index, n);
+        return index;
+    }
+
+    private static <T> void swap(T[] array, int m, int n) {
+        T tmp = array[m];
+        array[m] = array[n];
+        array[n] = tmp;
+    }
+
 }
