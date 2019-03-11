@@ -25,15 +25,15 @@ public class Functions {
         return () -> value;
     }
 
-    public static IntSupplier constant(int value) {
+    public static IntSupplier constantInt(int value) {
         return () -> value;
     }
 
-    public static LongSupplier constant(long value) {
+    public static LongSupplier constantLong(long value) {
         return () -> value;
     }
 
-    public static DoubleSupplier constant(double value) {
+    public static DoubleSupplier constantDouble(double value) {
         return () -> value;
     }
 
@@ -42,17 +42,17 @@ public class Functions {
         return t -> supplier.get();
     }
 
-    public static <T> ToIntFunction<T> forSupplier(IntSupplier supplier) {
+    public static <T> ToIntFunction<T> forIntSupplier(IntSupplier supplier) {
         Objects.requireNonNull(supplier);
         return t -> supplier.getAsInt();
     }
 
-    public static <T> ToLongFunction<T> forSupplier(LongSupplier supplier) {
+    public static <T> ToLongFunction<T> forLongSupplier(LongSupplier supplier) {
         Objects.requireNonNull(supplier);
         return t -> supplier.getAsLong();
     }
 
-    public static <T> ToDoubleFunction<T> forSupplier(DoubleSupplier supplier) {
+    public static <T> ToDoubleFunction<T> forDoubleSupplier(DoubleSupplier supplier) {
         Objects.requireNonNull(supplier);
         return t -> supplier.getAsDouble();
     }
@@ -63,7 +63,7 @@ public class Functions {
 
     public static <T, R> Function<T, R> forMap(Map<T, R> map, R defaultValue) {
         Objects.requireNonNull(map);
-        return  key -> map.containsKey(key) ? map.get(key) : defaultValue;
+        return  key -> map.getOrDefault(key, defaultValue);
     }
 
     public static <R> IntFunction<R> forIntKeyMap(Map<Integer, R> map) {
@@ -72,7 +72,7 @@ public class Functions {
 
     public static <R> IntFunction<R> forIntKeyMap(Map<Integer, R> map, R defaultValue) {
         Objects.requireNonNull(map);
-        return  key -> map.containsKey(key) ? map.get(key) : defaultValue;
+        return  key -> map.getOrDefault(key, defaultValue);
     }
 
 
@@ -82,7 +82,7 @@ public class Functions {
 
     public static <R> LongFunction<R> forLongKeyMap(Map<Long, R> map, R defaultValue) {
         Objects.requireNonNull(map);
-        return  key -> map.containsKey(key) ? map.get(key) : defaultValue;
+        return  key -> map.getOrDefault(key, defaultValue);
     }
 
 
@@ -92,42 +92,42 @@ public class Functions {
 
     public static <R> DoubleFunction<R> forDoubleKeyMap(Map<Double, R> map, R defaultValue) {
         Objects.requireNonNull(map);
-        return  key -> map.containsKey(key) ? map.get(key) : defaultValue;
+        return  key -> map.getOrDefault(key, defaultValue);
     }
 
     public static <T> ToIntFunction<T> forIntValueMap(Map<T, Integer> map) {
         Objects.requireNonNull(map);
-        return key -> map.containsKey(key) ? map.get(key) : 0;
+        return key -> map.getOrDefault(key, 0);
     }
 
     public static <T> ToLongFunction<T> forLongValueMap(Map<T, Long> map) {
         Objects.requireNonNull(map);
-        return key -> map.containsKey(key) ? map.get(key) : 0L;
+        return key -> map.getOrDefault(key, 0L);
     }
 
     public static <T> ToDoubleFunction<T> forDoubleValueMap(Map<T, Double> map) {
         Objects.requireNonNull(map);
-        return key -> map.containsKey(key) ? map.get(key) : 0.0;
+        return key -> map.getOrDefault(key, 0.0);
     }
 
     //==========================================================
 
-    public static <T, U, R> Function<U, R> bindFirst(BiFunction<T, U, R> func, T first) {
+    public static <T, U, R> Function<U, R> biBindFirst(BiFunction<T, U, R> func, T first) {
         Objects.requireNonNull(func);
         return u -> func.apply(first, u);
     }
 
-    public static <T, U> ToIntFunction<U> bindFirst(ToIntBiFunction<T, U> func, T first) {
+    public static <T, U> ToIntFunction<U> biToIntBindFirst(ToIntBiFunction<T, U> func, T first) {
         Objects.requireNonNull(func);
         return u -> func.applyAsInt(first, u);
     }
 
-    public static <T, U> ToLongFunction<U> bindFirst(ToLongBiFunction<T, U> func, T first) {
+    public static <T, U> ToLongFunction<U> biToLongBindFirst(ToLongBiFunction<T, U> func, T first) {
         Objects.requireNonNull(func);
         return u -> func.applyAsLong(first, u);
     }
 
-    public static <T, U> ToDoubleFunction<U> bindFirst(ToDoubleBiFunction<T, U> func, T first) {
+    public static <T, U> ToDoubleFunction<U> biToDoubleBindFirst(ToDoubleBiFunction<T, U> func, T first) {
         Objects.requireNonNull(func);
         return u -> func.applyAsDouble(first, u);
     }
@@ -140,122 +140,122 @@ public class Functions {
         return t -> func.apply(t, second);
     }
 
-    public static <T, U> ToIntFunction<T> bindSecond(ToIntBiFunction<T, U> func, U second) {
+    public static <T, U> ToIntFunction<T> toIntBindSecond(ToIntBiFunction<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.applyAsInt(t, second);
     }
 
-    public static <T, U> ToLongFunction<T> bindSecond(ToLongBiFunction<T, U> func, U second) {
+    public static <T, U> ToLongFunction<T> toLongBindSecond(ToLongBiFunction<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.applyAsLong(t, second);
     }
 
-    public static <T, U> ToDoubleFunction<T> bindSecond(ToDoubleBiFunction<T, U> func, U second) {
+    public static <T, U> ToDoubleFunction<T> toDoubleBindSecond(ToDoubleBiFunction<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.applyAsDouble(t, second);
     }
 
     //==========================================================
 
-    public static <T> UnaryOperator<T> bindFirst(BinaryOperator<T> func, T first) {
+    public static <T> UnaryOperator<T> binaryBindFirst(BinaryOperator<T> func, T first) {
         Objects.requireNonNull(func);
         return t -> func.apply(first, t);
     }
 
-    public static IntUnaryOperator bindFirst(IntBinaryOperator func, int first) {
+    public static IntUnaryOperator intBinaryBindFirst(IntBinaryOperator func, int first) {
         Objects.requireNonNull(func);
         return i -> func.applyAsInt(first, i);
     }
 
-    public static LongUnaryOperator bindFirst(LongBinaryOperator func, long first) {
+    public static LongUnaryOperator longBinaryBindFirst(LongBinaryOperator func, long first) {
         Objects.requireNonNull(func);
         return l -> func.applyAsLong(first, l);
     }
 
-    public static DoubleUnaryOperator bindFirst(DoubleBinaryOperator func, double first) {
+    public static DoubleUnaryOperator doubleBinaryBindFirst(DoubleBinaryOperator func, double first) {
         Objects.requireNonNull(func);
         return d -> func.applyAsDouble(first, d);
     }
 
     //==========================================================
 
-    public static <T> UnaryOperator<T> bindSecond(BinaryOperator<T> func, T second) {
+    public static <T> UnaryOperator<T> binaryBindSecond(BinaryOperator<T> func, T second) {
         Objects.requireNonNull(func);
         return t -> func.apply(t, second);
     }
 
-    public static IntUnaryOperator bindSecond(IntBinaryOperator func, int second) {
+    public static IntUnaryOperator intBinaryBindSecond(IntBinaryOperator func, int second) {
         Objects.requireNonNull(func);
         return i -> func.applyAsInt(i, second);
     }
 
-    public static LongUnaryOperator bindSecond(LongBinaryOperator func, long second) {
+    public static LongUnaryOperator longBinaryBindSecond(LongBinaryOperator func, long second) {
         Objects.requireNonNull(func);
         return i -> func.applyAsLong(i, second);
     }
 
-    public static DoubleUnaryOperator bindSecond(DoubleBinaryOperator func, double second) {
+    public static DoubleUnaryOperator doubleBinaryBindSecond(DoubleBinaryOperator func, double second) {
         Objects.requireNonNull(func);
         return d -> func.applyAsDouble(d, second);
     }
 
     //==========================================================
 
-    public static <T, U> Consumer<U> bindFirst(BiConsumer<T, U> func, T first) {
+    public static <T, U> Consumer<U> consumerBindFirst(BiConsumer<T, U> func, T first) {
         Objects.requireNonNull(func);
         return u -> func.accept(first, u);
     }
 
-    public static <T> IntConsumer bindFirst(ObjIntConsumer<T> func, T first) {
+    public static <T> IntConsumer intConsumerBindFirst(ObjIntConsumer<T> func, T first) {
         Objects.requireNonNull(func);
         return i -> func.accept(first, i);
     }
 
-    public static <T> LongConsumer bindFirst(ObjLongConsumer<T> func, T first) {
+    public static <T> LongConsumer longConsumerBindFirst(ObjLongConsumer<T> func, T first) {
         Objects.requireNonNull(func);
         return l -> func.accept(first, l);
     }
 
-    public static <T> DoubleConsumer bindFirst(ObjDoubleConsumer<T> func, T first) {
+    public static <T> DoubleConsumer doubleConsumerBindFirst(ObjDoubleConsumer<T> func, T first) {
         Objects.requireNonNull(func);
         return d -> func.accept(first, d);
     }
 
     //==========================================================
 
-    public static <T, U> Consumer<T> bindSecond(BiConsumer<T, U> func, U second) {
+    public static <T, U> Consumer<T> consumerBindSecond(BiConsumer<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.accept(t, second);
     }
 
-    public static <T> Consumer<T> bindSecond(ObjIntConsumer<T> func, int second) {
+    public static <T> Consumer<T> intConsumerBindSecond(ObjIntConsumer<T> func, int second) {
         Objects.requireNonNull(func);
         return t -> func.accept(t, second);
     }
 
-    public static <T> Consumer<T> bindSecond(ObjLongConsumer<T> func, long second) {
+    public static <T> Consumer<T> longConsumerBindSecond(ObjLongConsumer<T> func, long second) {
         Objects.requireNonNull(func);
         return t -> func.accept(t, second);
     }
 
-    public static <T> Consumer<T> bindSecond(ObjDoubleConsumer<T> func, double second) {
+    public static <T> Consumer<T> doubleConsumerBindSecond(ObjDoubleConsumer<T> func, double second) {
         Objects.requireNonNull(func);
         return t -> func.accept(t, second);
     }
 
     //==========================================================
 
-    public static <T, U> Predicate<U> bindFirst(BiPredicate<T, U> func, T first) {
+    public static <T, U> Predicate<U> biPredicateBindFirst(BiPredicate<T, U> func, T first) {
         Objects.requireNonNull(func);
         return u -> func.test(first, u);
     }
 
-    public static <T, U> Predicate<T> bindSecond(BiPredicate<T, U> func, U second) {
+    public static <T, U> Predicate<T> biPredicateBindSecond(BiPredicate<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.test(t, second);
     }
 
-    public static <T> BooleanSupplier bindFirst(Predicate<T> func, T first) {
+    public static <T> BooleanSupplier predicateBindFirst(Predicate<T> func, T first) {
         Objects.requireNonNull(func);
         return () -> func.test(first);
     }
@@ -267,47 +267,47 @@ public class Functions {
         return () -> func.apply(first);
     }
 
-    public static <T> IntSupplier bindFirst(ToIntFunction<T> func, T first) {
+    public static <T> IntSupplier toIntBindFirst(ToIntFunction<T> func, T first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsInt(first);
     }
 
-    public static IntSupplier bindFirst(LongToIntFunction func, long first) {
+    public static IntSupplier longToIntBindFirst(LongToIntFunction func, long first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsInt(first);
     }
 
-    public static IntSupplier bindFirst(DoubleToIntFunction func, double first) {
+    public static IntSupplier doubleToIntBindFirst(DoubleToIntFunction func, double first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsInt(first);
     }
 
-    public static <T> LongSupplier bindFirst(ToLongFunction<T> func, T first) {
+    public static <T> LongSupplier toLongindFirst(ToLongFunction<T> func, T first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsLong(first);
     }
 
-    public static LongSupplier bindFirst(IntToLongFunction func, int first) {
+    public static LongSupplier intToLongBindFirst(IntToLongFunction func, int first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsLong(first);
     }
 
-    public static LongSupplier bindFirst(DoubleToLongFunction func, double first) {
+    public static LongSupplier doubleToLongBindFirst(DoubleToLongFunction func, double first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsLong(first);
     }
 
-    public static <T> DoubleSupplier bindFirst(ToDoubleFunction<T> func, T first) {
+    public static <T> DoubleSupplier toDoubleBindFirst(ToDoubleFunction<T> func, T first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsDouble(first);
     }
 
-    public static DoubleSupplier bindFirst(IntToDoubleFunction func, int first) {
+    public static DoubleSupplier intToDoubleBindFirst(IntToDoubleFunction func, int first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsDouble(first);
     }
 
-    public static DoubleSupplier bindFirst(LongToDoubleFunction func, long first) {
+    public static DoubleSupplier longToDoubleBindFirst(LongToDoubleFunction func, long first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsDouble(first);
     }

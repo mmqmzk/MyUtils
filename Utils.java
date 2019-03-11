@@ -1,341 +1,147 @@
 package zk.util;
 
-import com.google.common.base.Charsets;
 import com.google.common.collect.Iterables;
-import com.google.common.hash.Hashing;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Ordering;
 import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.StringUtils;
+import com.sh.commons.tuple.Tuple;
+import com.sh.commons.tuple.TwoTuple;
+import lombok.Data;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * Created by 周锟 on 2016/1/25 10:12.
+ * @author 周锟
  */
 public class Utils {
 
-    /**
-     * 返回0~max之间的一个随机数,不包括max
-     *
-     * @param max
-     * @return
-     */
-    public static int nextInt(int max) {
-        if (max <= 0) {
-            throw new IllegalArgumentException("max <= 0");
-        }
-        return ThreadLocalRandom.current().nextInt(max);
+    public static String getStackTrace() {
+        return getStackTrace(1, 10);
     }
 
-    /**
-     * rate%的概率返回true
-     *
-     * @param rate
-     * @return
-     */
+    public static String getStackTrace(int start, int stop) {
+        if (start > stop) {
+            throw new IllegalArgumentException("start > stop");
+        }
+        StringBuilder builder = new StringBuilder((stop - start + 1) * 50);
+        StackTraceElement[] stackTrace = new Exception().getStackTrace();
+        int length = 2;
+        if (stackTrace.length < start + length) {
+            return builder.toString();
+        }
+        appendElement(builder, stackTrace[start + 1]);
+        for (int i = start + length; i < stop + length + 1 && i < stackTrace.length; i++) {
+            builder.append("<=");
+            appendElement(builder, stackTrace[i]);
+        }
+        return builder.toString();
+    }
+
+    private static void appendElement(StringBuilder builder, StackTraceElement element) {
+        String className = element.getClassName();
+        String methodName = element.getMethodName();
+        int index = className.lastIndexOf('.');
+        builder.append(className.substring(index + 1))
+                .append('.')
+                .append(methodName)
+                .append(':')
+                .append(element.getLineNumber());
+    }
+
+    public static int nextInt(int i) {
+        return ThreadLocalRandom.current().nextInt(i);
+    }
+
+    public static int random(int min, int max) {
+        return nextInt(max - min + 1) + min;
+    }
+
     public static boolean isLuck(int rate) {
         return isLuck(rate, 100);
     }
 
-    /**
-     * rate/base的概率返回true
-     *
-     * @param rate
-     * @param base
-     * @return
-     */
     public static boolean isLuck(int rate, int base) {
-        if (base <= 0) {
-            throw new IllegalArgumentException("base < 0");
-        }
         return nextInt(base) < rate;
     }
 
-    /**
-     * 返回from~to之间的随机数,包括form和to
-     *
-     * @param from
-     * @param to
-     * @return
-     */
-    public static int random(int from, int to) {
-        if (from > to) {
-            throw new IllegalArgumentException("from > to");
-        }
-        int n = to - from + 1;
-        return nextInt(n) + from;
+    public static <T> Optional<T> randomChoose(T[] array) {
+        return randomChoose(array, null);
     }
 
-    /**
-     * 等概率随机选一个
-     *
-     * @param col
-     * @param <T>
-     * @return
-     */
-    public static <T> T randomChoose(Collection<T> col) {
-        if (col == null || col.isEmpty()) {
-            return null;
+    public static <T> Optional<T> randomChoose(T[] array, ToIntFunction<T> weigher) {
+        if (array == null) {
+            return Optional.empty();
         }
-        int index = nextInt(col.size());
-        return get(col, index);
+        int total = weigher == null ? array.length : calculateTotalWeight(Arrays.stream(array), weigher);
+        return randomChoose(Arrays.stream(array), total, weigher);
     }
 
-    /**
-     * 等概率随机选一个
-     *
-     * @param array
-     * @param <T>
-     * @return
-     */
-    public static <T> T randomChoose(T[] array) {
-        if (array == null || array.length == 0) {
-            return null;
-        }
-        int index = nextInt(array.length);
-        return array[index];
+    public static <T> Optional<T> randomChoose(Collection<T> collection) {
+        return randomChoose(collection, null);
     }
 
-    /**
-     * 等概率随机选一个
-     *
-     * @param ints
-     * @return
-     */
-    public static int randomChoose(int[] ints) {
-        if (ints == null || ints.length == 0) {
-            throw new IllegalArgumentException();
+    public static <T> Optional<T> randomChoose(Collection<T> collection, ToIntFunction<T> weigher) {
+        if (collection == null) {
+            return Optional.empty();
         }
-        int index = nextInt(ints.length);
-        return ints[index];
+        int total = weigher == null ? collection.size() : calculateTotalWeight(collection.stream(), weigher);
+        return randomChoose(collection.stream(), total, weigher);
     }
 
-
-    /**
-     * 等概率随机选择n个
-     *
-     * @param list
-     * @param n
-     * @param <T>
-     * @return
-     */
-    public static <T> List<T> randomChooseN(List<T> list, int n) {
-        if (list == null || n <= 0) {
-            return Collections.emptyList();
+    private static <T> Optional<T> randomChoose(Stream<T> stream, int total, ToIntFunction<T> weigher) {
+        if (stream == null || total <= 0) {
+            return Optional.empty();
         }
-        int size = list.size();
-        List<T> result = new ArrayList<>(n);
-        for (int i = 0; i < size && n > 0; i++) {
-            if (nextInt(size - i) < n) {
-                result.add(list.get(i));
-                n--;
-            }
+        int random = nextInt(total);
+        if (weigher == null) {
+            return stream.filter(Objects::nonNull).skip(random).findFirst();
         }
-        return result;
+        TwoTuple<Integer, T> tuple = Tuple.tuple(random, null);
+        ToIntFunction<TwoTuple<Integer, T>> function = TwoTuple::getFirst;
+        tuple = stream.filter(Objects::nonNull).reduce(tuple, (t, obj) -> {
+            int weight;
+            int current = t.getFirst();
+            return current < 0 || (weight = weigher.applyAsInt(obj)) <= 0 ? t : Tuple.tuple(current - weight, obj);
+        }, BinaryOperator.minBy(orderingFromToIntFunction(TwoTuple::getFirst)));
+        return Optional.ofNullable(tuple.getSecond());
     }
 
-    /**
-     * 等概率随机选择n个
-     *
-     * @param col
-     * @param n
-     * @param <T>
-     * @return
-     */
-    public static <T> List<T> randomChooseN(Collection<T> col, int n) {
-        if (col == null || n <= 0) {
-            return Collections.emptyList();
+    private static <T> int calculateTotalWeight(Stream<T> stream, ToIntFunction<T> weigher) {
+        if (stream == null) {
+            return 0;
         }
-        int size = col.size();
-        List<T> result = new ArrayList<>(n);
-        Iterator<T> iterator = col.iterator();
-        for (int i = 0; i < size && iterator.hasNext() && n > 0; i++) {
-            T next = iterator.next();
-            if (nextInt(size - i) < n) {
-                result.add(next);
-                n--;
-            }
+        if (weigher == null) {
+            return Math.toIntExact(stream.filter(Objects::nonNull).count());
         }
-        return result;
+        return stream.filter(Objects::nonNull).mapToInt(weigher).filter(w -> w > 0).sum();
     }
 
-    /**
-     * 等概率随机选择n个
-     *
-     * @param array
-     * @param n
-     * @param <T>
-     * @return
-     */
-    public static <T> List<T> randomChooseN(T[] array, int n) {
+    public static int randomIndex(int[] list) {
         int length;
-        if (array == null || (length = array.length) == 0 || n <= 0) {
-            return Collections.emptyList();
-        }
-        List<T> result = new ArrayList<>(n);
-        for (int i = 0; i < length && n > 0; i++) {
-            if (nextInt(length - i) < n) {
-                result.add(array[i]);
-                n--;
-            }
-        }
-        return result;
-    }
-
-    /**
-     * 等概率随机选择n个
-     *
-     * @param ints
-     * @param n
-     * @return
-     */
-    public static List<Integer> randomChooseN(int[] ints, int n) {
-        int length;
-        if (ints == null || (length = ints.length) == 0 || n <= 0) {
-            return Collections.emptyList();
-        }
-        List<Integer> result = new ArrayList<>(n);
-        for (int i = 0; i < length && n > 0; i++) {
-            if (nextInt(length - i) < n) {
-                result.add(ints[i]);
-                n--;
-            }
-        }
-        return result;
-    }
-
-    /**
-     * 等概率随机删除一个并返回
-     *
-     * @param list
-     * @param <T>
-     * @return
-     */
-    public static <T> T randomRemove(List<T> list) {
-        if (list == null || list.isEmpty()) {
-            return null;
-        }
-        int index = nextInt(list.size());
-        return list.remove(index);
-    }
-
-    /**
-     * 以对应索引上的概率选择物品
-     *
-     * @param items
-     * @param rates
-     * @param <T>
-     * @return
-     */
-    public static <T> T randomChooseByRate(List<T> items, List<Integer> rates) {
-        if (items == null || rates == null) {
-            return null;
-        }
-        int index = randomIndex(rates);
-        if (index >= 0 && index < items.size()) {
-            return items.get(index);
-        }
-        return null;
-    }
-
-    public static <T> T randomChooseByRate(List<T> items, int[] rates) {
-        if (items == null || rates == null) {
-            return null;
-        }
-        int index = randomIndex(rates);
-        if (index >= 0 && index < items.size()) {
-            return items.get(index);
-        }
-        return null;
-    }
-
-    public static <T> T randomChooseByRate(T[] items, List<Integer> rates) {
-        if (items == null || rates == null) {
-            return null;
-        }
-        int index = randomIndex(rates);
-        if (index >= 0 && index < items.length) {
-            return items[index];
-        }
-        return null;
-    }
-
-    public static <T> T randomChooseByRate(T[] items, int[] rates) {
-        if (items == null || rates == null) {
-            return null;
-        }
-        int index = randomIndex(rates);
-        if (index >= 0 && index < items.length) {
-            return items[index];
-        }
-        return null;
-    }
-
-    public static int randomChooseByRate(int[] ints, int[] rates) {
-        if (ints == null || ints.length == 0 || rates == null || rates.length == 0 || ints.length < rates.length) {
-            throw new IllegalArgumentException();
-        }
-        int index = randomIndex(rates);
-        return ints[index];
-    }
-
-    /**
-     * 按概率返回索引
-     *
-     * @param rates
-     * @return
-     */
-    public static int randomIndex(List<Integer> rates) {
-        if (rates == null) {
+        if (list == null || (length = list.length) == 0) {
             return -1;
         }
         int total = 0;
-        for (Integer rate : rates) {
-            if (rate != null) {
-                total += rate;
+        for (int i = 0; i < length; i++) {
+            if (list[i] <= 0) {
+                continue;
             }
-        }
-        if (total == 0) {
-            return -1;
+            total += list[i];
         }
         int random = nextInt(total);
-        for (int i = 0; i < rates.size(); i++) {
-            Integer rate = rates.get(i);
-            if (rate != null) {
-                random -= rate;
-                if (random < 0) {
-                    return i;
-                }
+        for (int i = 0; i < length; i++) {
+            if (list[i] <= 0) {
+                continue;
             }
-        }
-        return -1;
-    }
-
-    /**
-     * 按概率返回索引
-     *
-     * @param rates
-     * @return
-     */
-    public static int randomIndex(int[] rates) {
-        if (rates == null) {
-            return -1;
-        }
-        int total = 0;
-        for (int i = 0; i < rates.length; i++) {
-            total += rates[i];
-        }
-        if (total == 0) {
-            return -1;
-        }
-        int random = nextInt(total);
-        for (int i = 0; i < rates.length; i++) {
-            random -= rates[i];
+            random -= list[i];
             if (random < 0) {
                 return i;
             }
@@ -343,38 +149,409 @@ public class Utils {
         return -1;
     }
 
-    //=============================================================================================
-
-    /**
-     * 返回长度为length的随机字符串,仅包括字母
-     *
-     * @param length
-     * @return
-     */
-    public static String randomString(int length) {
-        if (length < 0) {
-            throw new IllegalArgumentException("length < 0");
+    public static int randomIndex(long[] list) {
+        int length;
+        if (list == null || (length = list.length) == 0) {
+            return -1;
         }
-        return randomString(length, false);
+        long total = 0;
+        for (int i = 0; i < length; i++) {
+            if (list[i] <= 0) {
+                continue;
+            }
+            total += list[i];
+        }
+        long random = ThreadLocalRandom.current().nextLong(total);
+        for (int i = 0; i < length; i++) {
+            if (list[i] <= 0) {
+                continue;
+            }
+            random -= list[i];
+            if (random < 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static <T> int randomIndex(T[] list, ToIntFunction<T> weigher) {
+        int length;
+        if (list == null || weigher == null || (length = list.length) == 0) {
+            return -1;
+        }
+        int total = 0;
+        for (int i = 0; i < length; i++) {
+            int weight;
+            if (list[i] == null || (weight = weigher.applyAsInt(list[i])) <= 0) {
+                continue;
+            }
+            total += weight;
+        }
+        if (total <= 0) {
+            return -1;
+        }
+        int random = nextInt(total);
+        for (int i = 0; i < length; i++) {
+            int weight;
+            if (list[i] == null || (weight = weigher.applyAsInt(list[i])) <= 0) {
+                continue;
+            }
+            random -= weight;
+            if (random < 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static int randomIndex(Integer[] list) {
+        return randomIndex(list, Integer::intValue);
+    }
+
+    public static <T> int randomIndex(List<T> list, ToIntFunction<T> weigher) {
+        int size;
+        if (list == null || weigher == null || (size = list.size()) == 0) {
+            return -1;
+        }
+        int total = calculateTotalWeight(list.stream(), weigher);
+        if (total <= 0) {
+            return -1;
+        }
+        int random = nextInt(total);
+        for (int i = 0; i < size; i++) {
+            T value = list.get(i);
+            if (value == null) {
+                continue;
+            }
+            int weight = weigher.applyAsInt(value);
+            if (weight <= 0) {
+                continue;
+            }
+            random -= weight;
+            if (random < 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static int randomIndex(List<Integer> list) {
+        return randomIndex(list, Integer::intValue);
+    }
+
+    public static <T> List<T> randomChooseN(T[] array, int n) {
+        return randomChooseN(array, n, null);
+    }
+
+    public static <T> List<T> randomChooseN(T[] array, int n, ToIntFunction<T> weigher) {
+        if (array == null || n <= 0) {
+            return Collections.emptyList();
+        }
+        int total = weigher == null ? array.length : calculateTotalWeight(Arrays.stream(array), weigher);
+        return randomChooseN(Arrays.stream(array), n, total, weigher);
+    }
+
+    public static <T> List<T> randomChooseN(Collection<T> collection, int n) {
+        return randomChooseN(collection, n, null);
+    }
+
+    public static <T> List<T> randomChooseN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
+        if (collection == null || n <= 0) {
+            return Collections.emptyList();
+        }
+        int total = weigher == null ? collection.size() : calculateTotalWeight(collection.stream(), weigher);
+        return randomChooseN(collection.stream(), n, total, weigher);
+    }
+
+    private static <T> List<T> randomChooseN(Stream<T> stream, int n, int total, ToIntFunction<T> weigher) {
+        if (stream == null || total <= 0 || n <= 0) {
+            return Collections.emptyList();
+        }
+        Counter count = new Counter(n);
+        Counter totalWeight = new Counter(total);
+        return stream.filter(Objects::nonNull).filter(obj -> {
+            int weight = weigher == null ? 1 : weigher.applyAsInt(obj);
+            if (weight > 0 && count.gt0() && totalWeight.gt0()) {
+                int random = nextInt(totalWeight.get());
+                totalWeight.decAndGet(weight);
+                if (random < weight * count.get()) {
+                    count.decAndGet();
+                    return true;
+                }
+            }
+            return false;
+        }).collect(Collectors.toList());
+    }
+
+    public static <T> Optional<T> randomRemove(List<T> list) {
+        if (list == null || list.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(list.remove(nextInt(list.size())));
+    }
+
+    public static <T> Optional<T> randomRemove(Collection<T> collection) {
+        return randomRemove(collection, null);
+    }
+
+    public static <T> Optional<T> randomRemove(Collection<T> collection, ToIntFunction<T> weigher) {
+        if (collection == null || collection.isEmpty()) {
+            return Optional.empty();
+        }
+        List<T> list = randomRemoveN(collection, 1, weigher);
+        return Optional.ofNullable(get(list, 0));
+    }
+
+    public static <T> List<T> randomRemoveN(Collection<T> collection, int n) {
+        return randomRemoveN(collection, n, null);
+    }
+
+    public static <T> List<T> randomRemoveN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
+        int size;
+        if (collection == null || (size = collection.size()) == 0 || n <= 0) {
+            return Collections.emptyList();
+        }
+        int total = weigher == null ? size : calculateTotalWeight(collection.stream(), weigher);
+        if (total <= 0) {
+            return Collections.emptyList();
+        }
+        List<T> result = Lists.newArrayListWithCapacity(n);
+        for (; n > 0; n--) {
+            int random = nextInt(total);
+            for (Iterator<T> iterator = collection.iterator(); iterator.hasNext(); ) {
+                T t = iterator.next();
+                if (t == null) {
+                    continue;
+                }
+                int weight = weigher == null ? 1 : weigher.applyAsInt(t);
+                if (weight <= 0) {
+                    continue;
+                }
+                random -= weight;
+                if (random < 0) {
+                    result.add(t);
+                    iterator.remove();
+                    total -= weight;
+                    break;
+                }
+            }
+            if (total <= 0) {
+                break;
+            }
+        }
+        return result;
+    }
+
+    public static int get(int[] array, int index) {
+        return get(array, index, 0);
+    }
+
+    public static int get(int[] array, int index, int defaultValue) {
+        int length;
+        if (array == null || (length = array.length) == 0) {
+            return defaultValue;
+        }
+        if (index < 0) {
+            index += length;
+        }
+        if (index < 0 || index >= length) {
+            return defaultValue;
+        }
+        return array[index];
+    }
+
+    public static long get(long[] array, int index) {
+        return get(array, index, 0L);
+    }
+
+    public static long get(long[] array, int index, long defaultValue) {
+        int length;
+        if (array == null || (length = array.length) == 0) {
+            return defaultValue;
+        }
+        if (index < 0) {
+            index += length;
+        }
+        if (index < 0 || index >= length) {
+            return defaultValue;
+        }
+        return array[index];
+    }
+
+    public static <T> T get(T[] array, int index) {
+        return get(array, index, null);
+    }
+
+    public static <T> T get(T[] array, int index, T defaultValue) {
+        int length;
+        if (array == null || (length = array.length) == 0) {
+            return defaultValue;
+        }
+        if (index < 0) {
+            index += length;
+        }
+        if (index < 0 || index >= length) {
+            return defaultValue;
+        }
+        T t = array[index];
+        return t == null ? defaultValue : t;
+    }
+
+    public static <T> T get(Collection<T> collection, int index) {
+        return get(collection, index, null);
+    }
+
+    public static <T> T get(Collection<T> collection, int index, T defaultValue) {
+        int size;
+        if (collection == null || (size = collection.size()) == 0) {
+            return defaultValue;
+        }
+        if (index < 0) {
+            index += size;
+        }
+        if (index < 0 || index >= size) {
+            return defaultValue;
+        }
+        T t = Iterables.get(collection, index);
+        return t == null ? defaultValue : t;
+    }
+
+    public static <T, R> Ordering<T> orderingFromToIntFunction(ToIntFunction<T> function) {
+        Objects.requireNonNull(function);
+        Ordering<T> ordering = Ordering.from((a, b) ->
+                a == b ? 0 : Integer.compare(function.applyAsInt(a), function.applyAsInt(b)));
+        return ordering.nullsFirst();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T, R> Ordering<T> orderingFromFunction(Function<T, Comparable<R>> function) {
+        Objects.requireNonNull(function);
+        Ordering<T> ordering = Ordering.from((a, b) ->
+                a == b ? 0 : function.apply(a).compareTo((R) function.apply(b)));
+        return ordering.nullsFirst();
     }
 
     /**
-     * 返回长度为length的随机字符串
+     * 返回list中第一个小于target的数的索引
      *
-     * @param length
-     * @param numbers 是否包含数字
+     * @param list
+     * @param target
      * @return
      */
-    public static String randomString(int length, boolean numbers) {
-        if (length < 0) {
-            throw new IllegalArgumentException("length < 0");
-        }
-        return RandomStringUtils.random(length, true, numbers);
+    public static int indexLessThan(List<Integer> list, Integer target) {
+        return index(list, target, true, false);
     }
 
-    //=============================================================================================
+    /**
+     * 返回list中第一个小于等于target的数的索引
+     *
+     * @param list
+     * @param target
+     * @return
+     */
+    public static int indexLessThanOrEqualTo(List<Integer> list, Integer target) {
+        return index(list, target, true, true);
+    }
 
     /**
+     * 返回list中第一个小于target的数的索引
+     *
+     * @param list
+     * @param target
+     * @return
+     */
+    public static int indexLessThan(int[] list, int target) {
+        return index(list, target, true, false);
+    }
+
+    /**
+     * 返回list中第一个小于等于target的数的索引
+     *
+     * @param list
+     * @param target
+     * @return
+     */
+    public static int indexLessThanOrEqualTo(int[] list, int target) {
+        return index(list, target, true, true);
+    }
+
+    /**
+     * 返回list中第一个大于target的数的索引
+     *
+     * @param list
+     * @param target
+     * @return
+     */
+    public static int indexMoreThan(List<Integer> list, Integer target) {
+        return index(list, target, false, false);
+    }
+
+    /**
+     * 返回list中第一个大于等于target的数的索引
+     *
+     * @param list
+     * @param target
+     * @return
+     */
+    public static int indexMoreThanOrEqualTo(List<Integer> list, Integer target) {
+        return index(list, target, false, true);
+    }
+
+    /**
+     * 返回list中第一个大于target的数的索引
+     *
+     * @param list
+     * @param target
+     * @return
+     */
+    public static int indexMoreThan(int[] list, int target) {
+        return index(list, target, false, false);
+    }
+
+    /**
+     * 返回list中第一个大于等于target的数的索引
+     *
+     * @param list
+     * @param target
+     * @return
+     */
+    public static int indexMoreThanOrEqualTo(int[] list, int target) {
+        return index(list, target, false, true);
+    }
+
+    private static int index(List<Integer> list, Integer target, boolean less, boolean equal) {
+        if (list == null) {
+            return -1;
+        }
+        int size = list.size();
+        for (int i = 0; i < size; i++) {
+            Integer n = list.get(i);
+            if (n == null) {
+                if (equal && target == null) {
+                    return i;
+                }
+            } else if ((less && target < n) || (!less && target > n) || (equal && n.equals(target))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int index(int[] list, int target, boolean less, boolean equal) {
+        if (list == null) {
+            return -1;
+        }
+        int size = list.length;
+        for (int i = 0; i < size; i++) {
+            int n = list[i];
+            if ((less && target < n) || (!less && target > n) || (equal && target == n)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+	
+	/**
      * 将字符串数组转换为int数组
      *
      * @param strings
@@ -542,455 +719,143 @@ public class Utils {
         return false;
     }
 
-    //=============================================================================================
+    public static class Counter implements IntSupplier, IntConsumer, IntUnaryOperator {
 
-    public static String getStackTrace() {
-        return getStackTrace(1, 6);
-    }
+        int count;
 
-    public static String getStackTrace(int start, int stop) {
-        if (start > stop) {
-            throw new IllegalArgumentException("start > stop");
+        public Counter() {
+            this(0);
         }
-        StringBuilder builder = new StringBuilder((stop - start + 1) * 50);
-        StackTraceElement[] stackTrace = new Exception().getStackTrace();
-        if (stackTrace.length < start + 2) {
-            return builder.toString();
+
+        public Counter(int count) {
+            set(count);
         }
-        appendElement(builder, stackTrace[start + 1]);
-        for (int i = start + 2; i < stop + 3 && i < stackTrace.length; i++) {
-            builder.append("<=");
-            appendElement(builder, stackTrace[i]);
+
+        public int get() {
+            return count;
         }
-        return builder.toString();
-    }
 
-    private static void appendElement(StringBuilder builder, StackTraceElement element) {
-        String className = element.getClassName();
-        String methodName = element.getMethodName();
-        int index = className.lastIndexOf('.');
-        builder.append(className.substring(index + 1))
-                .append('.')
-                .append(methodName)
-                .append(':')
-                .append(element.getLineNumber());
-    }
-
-    //=============================================================================================
-
-    /**
-     * 返回list中第一个小于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexLessThan(List<Integer> list, Integer target) {
-        return index(list, target, true, false);
-    }
-
-    /**
-     * 返回list中第一个小于等于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexLessThanOrEqualTo(List<Integer> list, Integer target) {
-        return index(list, target, true, true);
-    }
-
-    /**
-     * 返回list中第一个小于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexLessThan(int[] list, int target) {
-        return index(list, target, true, false);
-    }
-
-    /**
-     * 返回list中第一个小于等于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexLessThanOrEqualTo(int[] list, int target) {
-        return index(list, target, true, true);
-    }
-
-    /**
-     * 返回list中第一个大于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexMoreThan(List<Integer> list, Integer target) {
-        return index(list, target, false, false);
-    }
-
-    /**
-     * 返回list中第一个大于等于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexMoreThanOrEqualTo(List<Integer> list, Integer target) {
-        return index(list, target, false, true);
-    }
-
-    /**
-     * 返回list中第一个大于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexMoreThan(int[] list, int target) {
-        return index(list, target, false, false);
-    }
-
-    /**
-     * 返回list中第一个大于等于target的数的索引
-     *
-     * @param list
-     * @param target
-     * @return
-     */
-    public static int indexMoreThanOrEqualTo(int[] list, int target) {
-        return index(list, target, false, true);
-    }
-
-    private static int index(List<Integer> list, Integer target, boolean less, boolean equal) {
-        if (list == null) {
-            return -1;
+        public void set(int count) {
+            this.count = count;
         }
-        int size = list.size();
-        for (int i = 0; i < size; i++) {
-            Integer n = list.get(i);
-            if (n == null) {
-                if (equal && target == null) {
-                    return i;
-                }
-            } else if ((less && target < n) || (!less && target > n) || (equal && n.equals(target))) {
-                return i;
-            }
-        }
-        return -1;
-    }
 
-    private static int index(int[] list, int target, boolean less, boolean equal) {
-        if (list == null) {
-            return -1;
+        public int getAndInc() {
+            return getAndInc(1);
         }
-        int size = list.length;
-        for (int i = 0; i < size; i++) {
-            int n = list[i];
-            if ((less && target < n) || (!less && target > n) || (equal && target == n)) {
-                return i;
-            }
-        }
-        return -1;
-    }
 
-    //=============================================================================================
+        public int getAndInc(int i) {
+            int count = this.count;
+            this.count += i;
+            return count;
+        }
 
-    public static String md5(String input) {
-        if (input == null) {
-            return "";
+        public int getAndDec() {
+            return getAndDec(1);
         }
-        return Hashing.md5().hashString(input, Charsets.UTF_8).toString();
-    }
 
-    public static String sha1(String input) {
-        if (input == null) {
-            return "";
+        public int getAndDec(int i) {
+            int count = this.count;
+            this.count -= i;
+            return count;
         }
-        return Hashing.sha1().hashString(input, Charsets.UTF_8).toString();
-    }
 
-    public static String sha256(String input) {
-        if (input == null) {
-            return "";
+        public int incAndGet() {
+            return incAndGet(1);
         }
-        return Hashing.sha256().hashString(input, Charsets.UTF_8).toString();
-    }
-    public static int get(int[] array, int index) {
-        return get(array, index, 0);
-    }
 
-    public static int get(int[] array, int index, int defaultValue) {
-        if (array == null) {
-            return defaultValue;
+        public int incAndGet(int i) {
+            return count += i;
         }
-        if (index < 0) {
-            index += array.length;
-        }
-        if (index < 0 || index >= array.length) {
-            return defaultValue;
-        }
-        return array[index];
-    }
 
-    public static <T> T get(T[] array, int index) {
-        return get(array, index, null);
-    }
+        public int decAndGet() {
+            return decAndGet(1);
+        }
 
-    public static <T> T get(T[] array, int index, T defaultValue) {
-        if (array == null) {
-            return defaultValue;
+        public int decAndGet(int i) {
+            return count -= i;
         }
-        if (index < 0) {
-            index += array.length;
-        }
-        if (index < 0 || index >= array.length) {
-            return defaultValue;
-        }
-        return array[index];
-    }
 
-    public static <T> T get(Collection<T> collection, int index) {
-        return get(collection, index, null);
-    }
+        public boolean eq(int i) {
+            return count == i;
+        }
 
-    public static <T> T get(Collection<T> collection, int index, T defaultValue) {
-        if (collection == null) {
-            return defaultValue;
+        public boolean eq0() {
+            return eq(0);
         }
-        if (index < 0) {
-            index += collection.size();
-        }
-        if (index < 0 || index >= collection.size()) {
-            return defaultValue;
-        }
-        T t = Iterables.get(collection, index);
-        return t == null ? defaultValue : t;
-    }
 
-    /**
-     * 返回列表中第k小的元素, 并将列表按第k小元素划分
-     *
-     * @param list
-     * @param comparator
-     * @param k
-     * @param <T>
-     * @return
-     */
-    public static <T> T selectKth(List<T> list, Comparator<T> comparator, int k) {
-        int index = selectKthIndex(list, comparator, k);
-        if (index >= 0 && index < list.size()) {
-            return list.get(index);
+        public boolean gt(int i) {
+            return count > i;
         }
-        return null;
-    }
 
-    /**
-     * 返回列表中第k小的元素的下标, 并将列表按第k小元素划分
-     *
-     * @param list
-     * @param comparator
-     * @param k
-     * @param <T>
-     * @return
-     */
-    public static <T> int selectKthIndex(List<T> list, Comparator<T> comparator, int k) {
-        if (list == null || list.isEmpty()) {
-            return -1;
+        public boolean ge(int i) {
+            return count >= i;
         }
-        return selectIndex(list, comparator, 0, list.size() - 1, k);
-    }
 
+        public boolean lt(int i) {
+            return count < i;
+        }
 
-    /**
-     * 返回数组中第k小的元素, 并将数组按第k小元素划分
-     *
-     * @param array
-     * @param comparator
-     * @param k
-     * @param <T>
-     * @return
-     */
-    public static <T> T selectKth(T[] array, Comparator<T> comparator, int k) {
-        int index = selectKthIndex(array, comparator, k);
-        if (index >= 0 && index < array.length) {
-            return array[index];
+        public boolean le(int i) {
+            return count <= i;
         }
-        return null;
-    }
 
-    /**
-     * 返回数组中第k小的元素的下标, 并将数组按第k小元素划分
-     *
-     * @param array
-     * @param comparator
-     * @param k
-     * @param <T>
-     * @return
-     */
-    public static <T> int selectKthIndex(T[] array, Comparator<T> comparator, int k) {
-        if (array == null || array.length == 0) {
-            return -1;
+        public boolean gt0() {
+            return gt(0);
         }
-        return selectIndex(array, comparator, 0, array.length - 1, k);
-    }
 
-    /**
-     * 返回列表中m到n下标之间第i小元素, 并将m到n间元素按第i小元素划分
-     *
-     * @param list
-     * @param comparator
-     * @param m
-     * @param n
-     * @param i
-     * @param <T>
-     * @return
-     */
-    public static <T> T select(List<T> list, Comparator<T> comparator, int m, int n, int i) {
-        int index = selectIndex(list, comparator, m, n, i);
-        if (index >= 0 && index < list.size()) {
-            return list.get(index);
+        public boolean ge0() {
+            return ge(0);
         }
-        return null;
-    }
 
-    /**
-     * 返回列表m到n下标之间第i小元素的下标, 并将m到n间元素按第i大元素划分
-     *
-     * @param list
-     * @param comparator
-     * @param m
-     * @param n
-     * @param i
-     * @param <T>
-     * @return
-     */
-    public static <T> int selectIndex(List<T> list, Comparator<T> comparator, int m, int n, int i) {
-        if (list == null || list.isEmpty() || comparator == null || n < m || n < 0 || m < 0) {
-            return -1;
+        public boolean lt0() {
+            return lt(0);
         }
-        if (m == n) {
-            return m;
+
+        public boolean le0() {
+            return le(0);
         }
-        int len = n - m + 1;
-        if (i < 0) {
-            i += len;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Counter counter = (Counter) o;
+            return count == counter.count;
         }
-        if (i < 0) {
-            i = 0;
-        } else if (i > len) {
-            i = len;
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(count);
         }
-        int index = partition(list, comparator, m, n);
-        int k = index - m + 1;
-        if (k == i) {
-            return index;
-        } else if (k > i) {
-            return selectIndex(list, comparator, m, index - 1, i);
-        } else {
-            return selectIndex(list, comparator, index + 1, n, i - k);
+
+        @Override
+        public void accept(int value) {
+            set(value);
+        }
+
+        @Override
+        public int getAsInt() {
+            return count;
+        }
+
+        @Override
+        public int applyAsInt(int operand) {
+            return incAndGet(operand);
         }
     }
 
-    private static <T> int partition(List<T> list, Comparator<T> comparator, int m, int n) {
-        int r = random(m, n);
-        T key = list.get(r);
-        swap(list, r, n);
-        int index = m;
-        for (int i = index + 1; i < n; i++) {
-            if (comparator.compare(list.get(i), key) < 0) {
-                swap(list, i, index++);
-            }
-        }
-        swap(list, index, n);
-        return index;
-    }
+    @Data
+    public static class Holder<T> implements Consumer<T>, Supplier<T> {
+        T data;
 
-    private static <T> void swap(List<T> list, int m, int n) {
-        T tmp = list.get(m);
-        list.set(m, list.get(n));
-        list.set(n, tmp);
-    }
+        @Override
+        public void accept(T t) {
+            this.data = t;
+        }
 
-    /**
-     * 返回数组中m到n下标之间第i小元素, 并将m到n间元素按第i小元素划分
-     *
-     * @param array
-     * @param comparator
-     * @param m
-     * @param n
-     * @param i
-     * @param <T>
-     * @return
-     */
-    public static <T> T select(T[] array, Comparator<T> comparator, int m, int n, int i) {
-        int index = selectIndex(array, comparator, m, n, i);
-        if (index >= 0 && index < array.length) {
-            return array[index];
-        }
-        return null;
-    }
-
-    /**
-     * 返回数组中m到n下标之间第i小元素的下标, 并将m到n间元素按第i小元素划分
-     *
-     * @param array
-     * @param comparator
-     * @param m
-     * @param n
-     * @param i
-     * @param <T>
-     * @return
-     */
-    public static <T> int selectIndex(T[] array, Comparator<T> comparator, int m, int n, int i) {
-        if (array == null || array.length <= 0 || comparator == null || n < m || n < 0 || m < 0) {
-            return -1;
-        }
-        if (m == n) {
-            return m;
-        }
-        int len = n - m + 1;
-        if (i < 0) {
-            i += len;
-        }
-        if (i < 0) {
-            i = 0;
-        } else if (i > len) {
-            i = len;
-        }
-        int index = partition(array, comparator, m, n);
-        int k = index - m + 1;
-        if (k == i) {
-            return index;
-        } else if (k > i) {
-            return selectIndex(array, comparator, m, index - 1, i);
-        } else {
-            return selectIndex(array, comparator, index + 1, n, i - k);
+        @Override
+        public T get() {
+            return data;
         }
     }
-
-    private static <T> int partition(T[] array, Comparator<T> comparator, int m, int n) {
-        int r = random(m, n);
-        T key = array[r];
-        swap(array, r, n);
-        int index = m;
-        for (int i = index + 1; i < n; i++) {
-            if (comparator.compare(array[i], key) < 0) {
-                swap(array, i, index++);
-            }
-        }
-        swap(array, index, n);
-        return index;
-    }
-
-    private static <T> void swap(T[] array, int m, int n) {
-        T tmp = array[m];
-        array[m] = array[n];
-        array[n] = tmp;
-    }
-
 }
