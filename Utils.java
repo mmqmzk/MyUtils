@@ -3,9 +3,7 @@ package zk.util;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
-import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
-import com.google.common.primitives.Longs;
 import com.sh.commons.tuple.Tuple;
 import com.sh.commons.tuple.TwoTuple;
 import lombok.Data;
@@ -105,7 +103,6 @@ public class Utils {
             return stream.filter(Objects::nonNull).skip(random).findFirst();
         }
         TwoTuple<Integer, T> tuple = Tuple.tuple(random, null);
-        ToIntFunction<TwoTuple<Integer, T>> function = TwoTuple::getFirst;
         tuple = stream.filter(Objects::nonNull).reduce(tuple, (t, obj) -> {
             int weight;
             int current = t.getFirst();
@@ -244,10 +241,11 @@ public class Utils {
     }
 
     public static <T> List<T> randomChooseN(T[] array, int n, ToIntFunction<T> weigher) {
-        if (array == null || n <= 0) {
+        int length;
+        if (array == null || (length = array.length) == 0 || n <= 0) {
             return Collections.emptyList();
         }
-        int total = weigher == null ? array.length : calculateTotalWeight(Arrays.stream(array), weigher);
+        int total = weigher == null ? length : calculateTotalWeight(Arrays.stream(array), weigher);
         return randomChooseN(Arrays.stream(array), n, total, weigher);
     }
 
@@ -256,10 +254,11 @@ public class Utils {
     }
 
     public static <T> List<T> randomChooseN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
-        if (collection == null || n <= 0) {
+        int size;
+        if (collection == null || (size = collection.size()) == 0|| n <= 0) {
             return Collections.emptyList();
         }
-        int total = weigher == null ? collection.size() : calculateTotalWeight(collection.stream(), weigher);
+        int total = weigher == null ? size : calculateTotalWeight(collection.stream(), weigher);
         return randomChooseN(collection.stream(), n, total, weigher);
     }
 
@@ -272,8 +271,7 @@ public class Utils {
         return stream.filter(Objects::nonNull).filter(obj -> {
             int weight = weigher == null ? 1 : weigher.applyAsInt(obj);
             if (weight > 0 && count.gt0() && totalWeight.gt0()) {
-                int random = nextInt(totalWeight.get());
-                totalWeight.decAndGet(weight);
+                int random = nextInt(totalWeight.getAndDec(weight));
                 if (random < weight * count.get()) {
                     count.decAndGet();
                     return true;
@@ -316,7 +314,7 @@ public class Utils {
             return Collections.emptyList();
         }
         List<T> result = Lists.newArrayListWithCapacity(n);
-        for (; n > 0; n--) {
+        for (; n > 0 && total > 0; n--) {
             int random = nextInt(total);
             for (Iterator<T> iterator = collection.iterator(); iterator.hasNext(); ) {
                 T t = iterator.next();
@@ -334,9 +332,6 @@ public class Utils {
                     total -= weight;
                     break;
                 }
-            }
-            if (total <= 0) {
-                break;
             }
         }
         return result;
@@ -417,18 +412,34 @@ public class Utils {
     }
 
     public static <T, R> Ordering<T> orderingFromToIntFunction(ToIntFunction<T> function) {
+        return orderingFromToIntFunction(function, true);
+    }
+
+    public static <T, R> Ordering<T> orderingFromToIntFunction(ToIntFunction<T> function, boolean nullsFirst) {
         Objects.requireNonNull(function);
         Ordering<T> ordering = Ordering.from((a, b) ->
                 a == b ? 0 : Integer.compare(function.applyAsInt(a), function.applyAsInt(b)));
-        return ordering.nullsFirst();
+        return nullsFirst ? ordering.nullsFirst() : ordering.nullsLast();
     }
 
-    @SuppressWarnings("unchecked")
     public static <T, R> Ordering<T> orderingFromFunction(Function<T, Comparable<R>> function) {
+        return orderingFromFunction(function, Ordering.natural(), true);
+    }
+
+    public static <T, R> Ordering<T> orderingFromFunction(Function<T, Comparable<R>> function, boolean nullsFirst) {
+        return orderingFromFunction(function, Ordering.natural(), nullsFirst);
+    }
+
+    public static <T, R> Ordering<T> orderingFromFunction(Function<T, R> function, Comparator<R> comparator) {
+        return orderingFromFunction(function, comparator, true);
+    }
+
+    public static <T, R> Ordering<T> orderingFromFunction(Function<T, R> function, Comparator<R> comparator, boolean nullsFirst) {
         Objects.requireNonNull(function);
+        Objects.requireNonNull(comparator);
         Ordering<T> ordering = Ordering.from((a, b) ->
-                a == b ? 0 : function.apply(a).compareTo((R) function.apply(b)));
-        return ordering.nullsFirst();
+                a == b ? 0 : comparator.compare(function.apply(a), function.apply(b)));
+        return nullsFirst ? ordering.nullsFirst() : ordering.nullsLast();
     }
 
     /**
@@ -585,11 +596,9 @@ public class Utils {
             Boolean aBoolean = (Boolean) object;
             return aBoolean ? 1 : 0;
         } else if (object instanceof BigInteger) {
-            BigInteger bigInteger = (BigInteger) object;
-            return bigInteger.longValue();
+            return (BigInteger) object;
         } else if (object instanceof BigDecimal) {
-            BigDecimal decimal = (BigDecimal) object;
-            return decimal.doubleValue();
+            return (BigDecimal) object;
         }
         return null;
     }
@@ -653,7 +662,11 @@ public class Utils {
                 return 0L;
             }
         }
-        Long aLong = Longs.tryParse(string, radix);
+        Long aLong = null;
+        try {
+            aLong = Long.parseLong(string, radix);
+        } catch (Exception ignore) {
+        }
         return aLong == null ? 0L : aLong;
     }
 
@@ -676,7 +689,11 @@ public class Utils {
         if (string.isEmpty()) {
             return 0.0;
         }
-        Double aDouble = Doubles.tryParse(string);
+        Double aDouble = null;
+        try {
+            aDouble = Double.parseDouble(string);
+        } catch (Exception ignore) {
+        }
         return aDouble == null ? 0.0 : aDouble;
     }
 
@@ -713,18 +730,17 @@ public class Utils {
                 string.equalsIgnoreCase("on")) {
             return true;
         }
-        if (parseToDouble(string) != 0) {
-            return true;
-        }
-        return false;
+        return parseToDouble(string) != 0;
     }
 
-    public static class Counter implements IntSupplier, IntConsumer, IntUnaryOperator {
-
+    @Data
+    public static class Counter implements IntSupplier, IntConsumer, IntUnaryOperator, IntPredicate {
+        public static final int STEP = 1;
+        public static final int ZERO = 0;
         int count;
 
         public Counter() {
-            this(0);
+            this(ZERO);
         }
 
         public Counter(int count) {
@@ -740,7 +756,7 @@ public class Utils {
         }
 
         public int getAndInc() {
-            return getAndInc(1);
+            return getAndInc(STEP);
         }
 
         public int getAndInc(int i) {
@@ -750,7 +766,7 @@ public class Utils {
         }
 
         public int getAndDec() {
-            return getAndDec(1);
+            return getAndDec(STEP);
         }
 
         public int getAndDec(int i) {
@@ -760,7 +776,7 @@ public class Utils {
         }
 
         public int incAndGet() {
-            return incAndGet(1);
+            return incAndGet(STEP);
         }
 
         public int incAndGet(int i) {
@@ -768,7 +784,7 @@ public class Utils {
         }
 
         public int decAndGet() {
-            return decAndGet(1);
+            return decAndGet(STEP);
         }
 
         public int decAndGet(int i) {
@@ -780,7 +796,7 @@ public class Utils {
         }
 
         public boolean eq0() {
-            return eq(0);
+            return eq(ZERO);
         }
 
         public boolean gt(int i) {
@@ -800,32 +816,19 @@ public class Utils {
         }
 
         public boolean gt0() {
-            return gt(0);
+            return gt(ZERO);
         }
 
         public boolean ge0() {
-            return ge(0);
+            return ge(ZERO);
         }
 
         public boolean lt0() {
-            return lt(0);
+            return lt(ZERO);
         }
 
         public boolean le0() {
-            return le(0);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Counter counter = (Counter) o;
-            return count == counter.count;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(count);
+            return le(ZERO);
         }
 
         @Override
@@ -835,17 +838,22 @@ public class Utils {
 
         @Override
         public int getAsInt() {
-            return count;
+            return get();
         }
 
         @Override
         public int applyAsInt(int operand) {
             return incAndGet(operand);
         }
+
+        @Override
+        public boolean test(int value) {
+            return eq(value);
+        }
     }
 
     @Data
-    public static class Holder<T> implements Consumer<T>, Supplier<T> {
+    public static class Holder<T> implements Consumer<T>, Supplier<T>, Predicate<T> {
         T data;
 
         @Override
@@ -856,6 +864,11 @@ public class Utils {
         @Override
         public T get() {
             return data;
+        }
+
+        @Override
+        public boolean test(T t) {
+            return equals(t);
         }
     }
 }

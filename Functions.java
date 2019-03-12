@@ -58,56 +58,121 @@ public class Functions {
     }
 
     public static <T, R> Function<T, R> forMap(Map<T, R> map) {
-        return forMap(map, null);
+        return forMapDefault(map, null);
     }
 
-    public static <T, R> Function<T, R> forMap(Map<T, R> map, R defaultValue) {
+    public static <T, R> Function<T, Optional<R>> forMapOptional(Map<T, R> map) {
+        Objects.requireNonNull(map);
+        return  key -> Optional.ofNullable(map.get(key));
+    }
+
+    public static <T, R> Function<T, R> forMapDefault(Map<T, R> map, R defaultValue) {
         Objects.requireNonNull(map);
         return  key -> map.getOrDefault(key, defaultValue);
     }
 
     public static <R> IntFunction<R> forIntKeyMap(Map<Integer, R> map) {
-        return  forIntKeyMap(map, null);
+        return  forIntKeyMapDefault(map, null);
     }
 
-    public static <R> IntFunction<R> forIntKeyMap(Map<Integer, R> map, R defaultValue) {
+    public static <R> IntFunction<Optional<R>> forIntKeyMapOptional(Map<Integer, R> map) {
+        Objects.requireNonNull(map);
+        return  key -> Optional.ofNullable(map.get(key));
+    }
+
+    public static <R> IntFunction<R> forIntKeyMapDefault(Map<Integer, R> map, R defaultValue) {
         Objects.requireNonNull(map);
         return  key -> map.getOrDefault(key, defaultValue);
     }
 
 
     public static <R> LongFunction<R> forLongKeyMap(Map<Long, R> map) {
-        return  forLongKeyMap(map, null);
+        return  forLongKeyMapDefault(map, null);
     }
 
-    public static <R> LongFunction<R> forLongKeyMap(Map<Long, R> map, R defaultValue) {
+    public static <R> LongFunction<Optional<R>> forLongKeyMapOptional(Map<Long, R> map) {
+        Objects.requireNonNull(map);
+        return  key -> Optional.ofNullable(map.get(key));
+    }
+
+    public static <R> LongFunction<R> forLongKeyMapDefault(Map<Long, R> map, R defaultValue) {
         Objects.requireNonNull(map);
         return  key -> map.getOrDefault(key, defaultValue);
     }
 
 
     public static <R> DoubleFunction<R> forDoubleKeyMap(Map<Double, R> map) {
-        return  forDoubleKeyMap(map, null);
+        return  forDoubleKeyMapDefault(map, null);
     }
 
-    public static <R> DoubleFunction<R> forDoubleKeyMap(Map<Double, R> map, R defaultValue) {
+    public static <R> DoubleFunction<Optional<R>> forDoubleKeyMapOptional(Map<Double, R> map) {
+        Objects.requireNonNull(map);
+        return  key -> Optional.ofNullable(map.get(key));
+    }
+
+    public static <R> DoubleFunction<R> forDoubleKeyMapDefault(Map<Double, R> map, R defaultValue) {
         Objects.requireNonNull(map);
         return  key -> map.getOrDefault(key, defaultValue);
     }
 
     public static <T> ToIntFunction<T> forIntValueMap(Map<T, Integer> map) {
+        return forIntValueMapDefault(map, 0);
+    }
+
+    public static <T> Function<T, OptionalInt> forIntValueMapOptional(Map<T, Integer> map) {
         Objects.requireNonNull(map);
-        return key -> map.getOrDefault(key, 0);
+        return key -> {
+            Integer value = map.get(key);
+            return value == null ? OptionalInt.empty() : OptionalInt.of(value);
+        };
+    }
+
+    public static <T> ToIntFunction<T> forIntValueMapDefault(Map<T, Integer> map, int defaultValue) {
+        Objects.requireNonNull(map);
+        return key -> {
+            Integer value = map.get(key);
+            return value == null ? defaultValue : value;
+        };
     }
 
     public static <T> ToLongFunction<T> forLongValueMap(Map<T, Long> map) {
+        return forLongValueMapDefault(map, 0L);
+    }
+
+    public static <T> Function<T, OptionalLong> forLongValueMapOptional(Map<T, Long> map) {
         Objects.requireNonNull(map);
-        return key -> map.getOrDefault(key, 0L);
+        return key -> {
+            Long value = map.get(key);
+            return value == null ? OptionalLong.empty() : OptionalLong.of(value);
+        };
+    }
+
+    public static <T> ToLongFunction<T> forLongValueMapDefault(Map<T, Long> map, long defaultValue) {
+        Objects.requireNonNull(map);
+        return key -> {
+            Long value = map.get(key);
+            return value == null ? defaultValue : value;
+        };
     }
 
     public static <T> ToDoubleFunction<T> forDoubleValueMap(Map<T, Double> map) {
+        return forDoubleValueMapDefault(map, 0.0);
+    }
+
+    public static <T> Function<T, OptionalDouble> forDoubleValueMapOptional(Map<T, Double> map) {
         Objects.requireNonNull(map);
-        return key -> map.getOrDefault(key, 0.0);
+        return key -> {
+            Double value = map.get(key);
+            return value == null ? OptionalDouble.empty() : OptionalDouble.of(value);
+        };
+    }
+
+    public static <T> ToDoubleFunction<T> forDoubleValueMapDefault(Map<T, Double> map, double defaultValue) {
+        Objects.requireNonNull(map);
+        return key -> {
+            Double value = map.get(key);
+            return value == null ? defaultValue : value;
+        };
     }
 
     //==========================================================
@@ -135,24 +200,46 @@ public class Functions {
 
     //==========================================================
 
-    public static <T, U, R> Function<T, R> bindSecond(BiFunction<T, U, R> func, U second) {
+    public static <T, U, R> Function<T, R> biBindSecond(BiFunction<T, U, R> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.apply(t, second);
     }
 
-    public static <T, U> ToIntFunction<T> toIntBindSecond(ToIntBiFunction<T, U> func, U second) {
+    public static <T, U> ToIntFunction<T> biToIntBindSecond(ToIntBiFunction<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.applyAsInt(t, second);
     }
 
-    public static <T, U> ToLongFunction<T> toLongBindSecond(ToLongBiFunction<T, U> func, U second) {
+    public static <T, U> ToLongFunction<T> biToLongBindSecond(ToLongBiFunction<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.applyAsLong(t, second);
     }
 
-    public static <T, U> ToDoubleFunction<T> toDoubleBindSecond(ToDoubleBiFunction<T, U> func, U second) {
+    public static <T, U> ToDoubleFunction<T> biToDoubleBindSecond(ToDoubleBiFunction<T, U> func, U second) {
         Objects.requireNonNull(func);
         return t -> func.applyAsDouble(t, second);
+    }
+
+    //==========================================================
+
+    public static <T> Supplier<T> unaryBindFirst(UnaryOperator<T> func, T first) {
+        Objects.requireNonNull(func);
+        return () -> func.apply(first);
+    }
+
+    public static IntSupplier intUnaryBindFirst(IntUnaryOperator func, int first) {
+        Objects.requireNonNull(func);
+        return () -> func.applyAsInt(first);
+    }
+
+    public static LongSupplier longUnaryBindFirst(LongUnaryOperator func, long first) {
+        Objects.requireNonNull(func);
+        return () -> func.applyAsLong(first);
+    }
+
+    public static DoubleSupplier doubleUnaryBindFirst(DoubleUnaryOperator func, double first) {
+        Objects.requireNonNull(func);
+        return () -> func.applyAsDouble(first);
     }
 
     //==========================================================
@@ -260,9 +347,39 @@ public class Functions {
         return () -> func.test(first);
     }
 
+    public static BooleanSupplier intPredicateBindFirst(IntPredicate func, int first) {
+        Objects.requireNonNull(func);
+        return () -> func.test(first);
+    }
+
+    public static BooleanSupplier longPredicateBindFirst(LongPredicate func, long first) {
+        Objects.requireNonNull(func);
+        return () -> func.test(first);
+    }
+
+    public static BooleanSupplier doublePredicateBindFirst(DoublePredicate func, double first) {
+        Objects.requireNonNull(func);
+        return () -> func.test(first);
+    }
+
     //==========================================================
 
     public static <T, R> Supplier<R> bindFirst(Function<T, R> func, T first) {
+        Objects.requireNonNull(func);
+        return () -> func.apply(first);
+    }
+
+    public static <R> Supplier<R> intBindFirst(IntFunction<R> func, int first) {
+        Objects.requireNonNull(func);
+        return () -> func.apply(first);
+    }
+
+    public static <R> Supplier<R> longBindFirst(LongFunction<R> func, long first) {
+        Objects.requireNonNull(func);
+        return () -> func.apply(first);
+    }
+
+    public static <R> Supplier<R> doubleBindFirst(DoubleFunction<R> func, double first) {
         Objects.requireNonNull(func);
         return () -> func.apply(first);
     }
@@ -282,7 +399,7 @@ public class Functions {
         return () -> func.applyAsInt(first);
     }
 
-    public static <T> LongSupplier toLongindFirst(ToLongFunction<T> func, T first) {
+    public static <T> LongSupplier toLongBindFirst(ToLongFunction<T> func, T first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsLong(first);
     }
