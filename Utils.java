@@ -75,10 +75,10 @@ public class Utils {
     }
 
     public static <T> Optional<T> randomChoose(T[] array, ToIntFunction<T> weigher) {
-        if (array == null) {
+        if (array == null || array.length == 0) {
             return Optional.empty();
         }
-        int total = weigher == null ? array.length : calculateTotalWeight(Arrays.stream(array), weigher);
+        int total = calculateTotalWeight(array, weigher);
         return randomChoose(Arrays.stream(array), total, weigher);
     }
 
@@ -90,7 +90,7 @@ public class Utils {
         if (collection == null) {
             return Optional.empty();
         }
-        int total = weigher == null ? collection.size() : calculateTotalWeight(collection.stream(), weigher);
+        int total = calculateTotalWeight(collection, weigher);
         return randomChoose(collection.stream(), total, weigher);
     }
 
@@ -100,15 +100,33 @@ public class Utils {
         }
         int random = nextInt(total);
         if (weigher == null) {
-            return stream.filter(Objects::nonNull).skip(random).findFirst();
+            return stream.skip(random).findFirst();
         }
         TwoTuple<Integer, T> tuple = Tuple.tuple(random, null);
-        tuple = stream.filter(Objects::nonNull).reduce(tuple, (t, obj) -> {
-            int weight;
-            int current = t.getFirst();
-            return current < 0 || (weight = weigher.applyAsInt(obj)) <= 0 ? t : Tuple.tuple(current - weight, obj);
-        }, BinaryOperator.minBy(orderingFromToIntFunction(TwoTuple::getFirst)));
+        tuple = stream.reduce(tuple, (t, obj) ->
+                t.getFirst() < 0  ? t : Tuple.tuple(t.getFirst() - getWeight(weigher, obj), obj),
+                BinaryOperator.minBy(orderingFromToIntFunction(TwoTuple::getFirst)));
         return Optional.ofNullable(tuple.getSecond());
+    }
+
+    private static <T> int calculateTotalWeight(T[] array, ToIntFunction<T> weigher) {
+        if (array == null) {
+            return 0;
+        }
+        if (weigher == null) {
+            return array.length;
+        }
+        return calculateTotalWeight(Arrays.stream(array), weigher);
+    }
+
+    private static <T> int calculateTotalWeight(Collection<T> collection, ToIntFunction<T> weigher) {
+        if (collection == null) {
+            return 0;
+        }
+        if (weigher == null) {
+            return collection.size();
+        }
+        return calculateTotalWeight(collection.stream(), weigher);
     }
 
     private static <T> int calculateTotalWeight(Stream<T> stream, ToIntFunction<T> weigher) {
@@ -116,84 +134,23 @@ public class Utils {
             return 0;
         }
         if (weigher == null) {
-            return Math.toIntExact(stream.filter(Objects::nonNull).count());
+            return Math.toIntExact(stream.count());
         }
-        return stream.filter(Objects::nonNull).mapToInt(weigher).filter(w -> w > 0).sum();
+        return stream.mapToInt(weigher).sum();
     }
 
-    public static int randomIndex(int[] list) {
+    public static int randomIndex(int[] array) {
         int length;
-        if (list == null || (length = list.length) == 0) {
+        if (array == null || (length = array.length) == 0) {
             return -1;
         }
-        int total = 0;
-        for (int i = 0; i < length; i++) {
-            if (list[i] <= 0) {
-                continue;
-            }
-            total += list[i];
-        }
-        int random = nextInt(total);
-        for (int i = 0; i < length; i++) {
-            if (list[i] <= 0) {
-                continue;
-            }
-            random -= list[i];
-            if (random < 0) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    public static int randomIndex(long[] list) {
-        int length;
-        if (list == null || (length = list.length) == 0) {
-            return -1;
-        }
-        long total = 0;
-        for (int i = 0; i < length; i++) {
-            if (list[i] <= 0) {
-                continue;
-            }
-            total += list[i];
-        }
-        long random = ThreadLocalRandom.current().nextLong(total);
-        for (int i = 0; i < length; i++) {
-            if (list[i] <= 0) {
-                continue;
-            }
-            random -= list[i];
-            if (random < 0) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    public static <T> int randomIndex(T[] list, ToIntFunction<T> weigher) {
-        int length;
-        if (list == null || weigher == null || (length = list.length) == 0) {
-            return -1;
-        }
-        int total = 0;
-        for (int i = 0; i < length; i++) {
-            int weight;
-            if (list[i] == null || (weight = weigher.applyAsInt(list[i])) <= 0) {
-                continue;
-            }
-            total += weight;
-        }
+        int total = Arrays.stream(array).sum();
         if (total <= 0) {
             return -1;
         }
         int random = nextInt(total);
         for (int i = 0; i < length; i++) {
-            int weight;
-            if (list[i] == null || (weight = weigher.applyAsInt(list[i])) <= 0) {
-                continue;
-            }
-            random -= weight;
+            random -= array[i];
             if (random < 0) {
                 return i;
             }
@@ -201,8 +158,46 @@ public class Utils {
         return -1;
     }
 
-    public static int randomIndex(Integer[] list) {
-        return randomIndex(list, Integer::intValue);
+    public static int randomIndex(long[] array) {
+        int length;
+        if (array == null || (length = array.length) == 0) {
+            return -1;
+        }
+        long total = Arrays.stream(array).sum();
+        if (total <= 0) {
+            return -1;
+        }
+        long random = ThreadLocalRandom.current().nextLong(total);
+        for (int i = 0; i < length; i++) {
+            random -=  array[i];
+            if (random < 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static <T> int randomIndex(T[] array, ToIntFunction<T> weigher) {
+        int length;
+        if (array == null || weigher == null || (length = array.length) == 0) {
+            return -1;
+        }
+        int total = calculateTotalWeight(array, weigher);
+        if (total <= 0) {
+            return -1;
+        }
+        int random = nextInt(total);
+        for (int i = 0; i < length; i++) {
+            random -= getWeight(weigher, array[i]);
+            if (random < 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static int randomIndex(Integer[] array) {
+        return randomIndex(array, Integer::intValue);
     }
 
     public static <T> int randomIndex(List<T> list, ToIntFunction<T> weigher) {
@@ -210,21 +205,13 @@ public class Utils {
         if (list == null || weigher == null || (size = list.size()) == 0) {
             return -1;
         }
-        int total = calculateTotalWeight(list.stream(), weigher);
+        int total = calculateTotalWeight(list, weigher);
         if (total <= 0) {
             return -1;
         }
         int random = nextInt(total);
         for (int i = 0; i < size; i++) {
-            T value = list.get(i);
-            if (value == null) {
-                continue;
-            }
-            int weight = weigher.applyAsInt(value);
-            if (weight <= 0) {
-                continue;
-            }
-            random -= weight;
+            random -= getWeight(weigher, list.get(i));
             if (random < 0) {
                 return i;
             }
@@ -241,11 +228,10 @@ public class Utils {
     }
 
     public static <T> List<T> randomChooseN(T[] array, int n, ToIntFunction<T> weigher) {
-        int length;
-        if (array == null || (length = array.length) == 0 || n <= 0) {
+        if (array == null || array.length == 0 || n <= 0) {
             return Collections.emptyList();
         }
-        int total = weigher == null ? length : calculateTotalWeight(Arrays.stream(array), weigher);
+        int total = calculateTotalWeight(array, weigher);
         return randomChooseN(Arrays.stream(array), n, total, weigher);
     }
 
@@ -254,11 +240,10 @@ public class Utils {
     }
 
     public static <T> List<T> randomChooseN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
-        int size;
-        if (collection == null || (size = collection.size()) == 0|| n <= 0) {
+        if (collection == null || collection.size() == 0|| n <= 0) {
             return Collections.emptyList();
         }
-        int total = weigher == null ? size : calculateTotalWeight(collection.stream(), weigher);
+        int total = calculateTotalWeight(collection, weigher);
         return randomChooseN(collection.stream(), n, total, weigher);
     }
 
@@ -268,9 +253,9 @@ public class Utils {
         }
         Counter count = new Counter(n);
         Counter totalWeight = new Counter(total);
-        return stream.filter(Objects::nonNull).filter(obj -> {
-            int weight = weigher == null ? 1 : weigher.applyAsInt(obj);
-            if (weight > 0 && count.gt0() && totalWeight.gt0()) {
+        return stream.filter(obj -> {
+            if (count.gt0() && totalWeight.gt0()) {
+                int weight = getWeight(weigher, obj);
                 int random = nextInt(totalWeight.getAndDec(weight));
                 if (random < weight * count.get()) {
                     count.decAndGet();
@@ -279,6 +264,10 @@ public class Utils {
             }
             return false;
         }).collect(Collectors.toList());
+    }
+
+    private static <T> int getWeight(ToIntFunction<T> weigher, T obj) {
+        return weigher == null ? 1 : weigher.applyAsInt(obj);
     }
 
     public static <T> Optional<T> randomRemove(List<T> list) {
@@ -305,11 +294,10 @@ public class Utils {
     }
 
     public static <T> List<T> randomRemoveN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
-        int size;
-        if (collection == null || (size = collection.size()) == 0 || n <= 0) {
+        if (collection == null || collection.size() == 0 || n <= 0) {
             return Collections.emptyList();
         }
-        int total = weigher == null ? size : calculateTotalWeight(collection.stream(), weigher);
+        int total = calculateTotalWeight(collection, weigher);
         if (total <= 0) {
             return Collections.emptyList();
         }
@@ -318,13 +306,7 @@ public class Utils {
             int random = nextInt(total);
             for (Iterator<T> iterator = collection.iterator(); iterator.hasNext(); ) {
                 T t = iterator.next();
-                if (t == null) {
-                    continue;
-                }
-                int weight = weigher == null ? 1 : weigher.applyAsInt(t);
-                if (weight <= 0) {
-                    continue;
-                }
+                int weight = getWeight(weigher, t);
                 random -= weight;
                 if (random < 0) {
                     result.add(t);
