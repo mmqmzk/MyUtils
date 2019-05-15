@@ -6,7 +6,9 @@ import com.google.common.collect.Ordering;
 import com.google.common.primitives.Ints;
 import com.sh.commons.tuple.Tuple;
 import com.sh.commons.tuple.TwoTuple;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -240,7 +242,7 @@ public class Utils {
     }
 
     public static <T> List<T> randomChooseN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
-        if (collection == null || collection.size() == 0|| n <= 0) {
+        if (collection == null || collection.size() == 0 || n <= 0) {
             return Collections.emptyList();
         }
         int total = calculateTotalWeight(collection, weigher);
@@ -543,8 +545,8 @@ public class Utils {
         }
         return -1;
     }
-	
-	/**
+
+    /**
      * 将字符串数组转换为int数组
      *
      * @param strings
@@ -835,12 +837,14 @@ public class Utils {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class Holder<T> implements Consumer<T>, Supplier<T>, Predicate<T> {
         T data;
 
         @Override
         public void accept(T t) {
-            this.data = t;
+            data = t;
         }
 
         @Override
