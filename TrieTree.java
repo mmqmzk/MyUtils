@@ -35,7 +35,7 @@ public class TrieTree<T> {
         }
 
         Node addNode(char value) {
-           value = transChar(value);
+            value = transChar(value);
             Node node = nodeMap.get(value);
             if (node == null) {
                 node = new Node(value);
@@ -63,7 +63,7 @@ public class TrieTree<T> {
     private Node root = new Node(ZERO);
 
     public TrieTree() {
-        this(Functions.biBindSecond(Utils::get, 0));
+        this(Functions.bindSecond(Utils::get, 0));
     }
 
     public TrieTree(Function<List<T>, T> picker) {

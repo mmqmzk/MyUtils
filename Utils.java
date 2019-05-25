@@ -106,7 +106,7 @@ public class Utils {
         }
         TwoTuple<Integer, T> tuple = Tuple.tuple(random, null);
         tuple = stream.reduce(tuple, (t, obj) ->
-                t.getFirst() < 0  ? t : Tuple.tuple(t.getFirst() - getWeight(weigher, obj), obj),
+                        t.getFirst() < 0 ? t : Tuple.tuple(t.getFirst() - getWeight(weigher, obj), obj),
                 BinaryOperator.minBy(orderingFromToIntFunction(TwoTuple::getFirst)));
         return Optional.ofNullable(tuple.getSecond());
     }
@@ -171,7 +171,7 @@ public class Utils {
         }
         long random = ThreadLocalRandom.current().nextLong(total);
         for (int i = 0; i < length; i++) {
-            random -=  array[i];
+            random -= array[i];
             if (random < 0) {
                 return i;
             }
