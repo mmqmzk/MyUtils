@@ -72,6 +72,30 @@ public class Utils {
         return nextInt(base) < rate;
     }
 
+    public static OptionalInt randomChoose(int[] array) {
+        int length;
+        if (array == null || (length = array.length) <= 0) {
+            return OptionalInt.empty();
+        }
+        return OptionalInt.of(get(array, nextInt(length)));
+    }
+
+    public static OptionalLong randomChoose(long[] array) {
+        int length;
+        if (array == null || (length = array.length) <= 0) {
+            return OptionalLong.empty();
+        }
+        return OptionalLong.of(get(array, nextInt(length)));
+    }
+
+    public static OptionalDouble randomChoose(double[] array) {
+        int length;
+        if (array == null || (length = array.length) <= 0) {
+            return OptionalDouble.empty();
+        }
+        return OptionalDouble.of(get(array, nextInt(length)));
+    }
+
     public static <T> Optional<T> randomChoose(T[] array) {
         return randomChoose(array, null);
     }
@@ -344,6 +368,24 @@ public class Utils {
     }
 
     public static long get(long[] array, int index, long defaultValue) {
+        int length;
+        if (array == null || (length = array.length) == 0) {
+            return defaultValue;
+        }
+        if (index < 0) {
+            index += length;
+        }
+        if (index < 0 || index >= length) {
+            return defaultValue;
+        }
+        return array[index];
+    }
+
+    public static double get(double[] array, int index) {
+        return get(array, index, 0.0);
+    }
+
+    public static double get(double[] array, int index, double defaultValue) {
         int length;
         if (array == null || (length = array.length) == 0) {
             return defaultValue;
