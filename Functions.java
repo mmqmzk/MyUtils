@@ -11,19 +11,6 @@ import java.util.stream.Stream;
  * Created by 周锟 on 2016/1/29 9:53.
  */
 public class Functions {
-    public static <L, R, V> List<V> transform(Collection<L> lhs, Collection<R> rhs, BiFunction<L, R, V> func) {
-        Objects.requireNonNull(func);
-        if (lhs == null || rhs == null) {
-            return Collections.emptyList();
-        }
-        List<V> result = new ArrayList<>(Math.min(lhs.size(), rhs.size()));
-        Iterator<L> lIterator = lhs.iterator();
-        Iterator<R> rIterator = rhs.iterator();
-        while (lIterator.hasNext() && rIterator.hasNext()) {
-            result.add(func.apply(lIterator.next(), rIterator.next()));
-        }
-        return result;
-    }
 
     public static <T, V, R> Function<T, R> join(Function<T, V> before, Function<V, R> after) {
         return before.andThen(after);
@@ -52,16 +39,24 @@ public class Functions {
         return () -> value;
     }
 
-    public static IntSupplier constantI(int value) {
+    public static IntSupplier constantInt(int value) {
         return () -> value;
     }
 
-    public static LongSupplier constantL(long value) {
+    public static LongSupplier constantLong(long value) {
         return () -> value;
     }
 
-    public static DoubleSupplier constantD(double value) {
+    public static DoubleSupplier constantDouble(double value) {
         return () -> value;
+    }
+
+    public static <T> Predicate<T> always(boolean value) {
+        return t -> value;
+    }
+
+    public static <T, R> Function<T, R> always(R value) {
+        return t -> value;
     }
 
     public static <T, R> Function<T, R> forSupplier(Supplier<R> supplier) {
@@ -117,51 +112,51 @@ public class Functions {
         return () -> func.apply(first);
     }
 
-    public static IntSupplier iUBindFirst(IntUnaryOperator func, int first) {
+    public static IntSupplier iuBindFirst(IntUnaryOperator func, int first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsInt(first);
     }
 
-    public static LongSupplier lUBindFirst(LongUnaryOperator func, long first) {
+    public static LongSupplier luBindFirst(LongUnaryOperator func, long first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsLong(first);
     }
 
-    public static DoubleSupplier dUBindFirst(DoubleUnaryOperator func, double first) {
+    public static DoubleSupplier duBindFirst(DoubleUnaryOperator func, double first) {
         Objects.requireNonNull(func);
         return () -> func.applyAsDouble(first);
     }
 
     //==========================================================
 
-    public static IntUnaryOperator iBBindFirst(IntBinaryOperator func, int first) {
+    public static IntUnaryOperator ibBindFirst(IntBinaryOperator func, int first) {
         Objects.requireNonNull(func);
         return i -> func.applyAsInt(first, i);
     }
 
-    public static LongUnaryOperator lBBindFirst(LongBinaryOperator func, long first) {
+    public static LongUnaryOperator lbBindFirst(LongBinaryOperator func, long first) {
         Objects.requireNonNull(func);
         return l -> func.applyAsLong(first, l);
     }
 
-    public static DoubleUnaryOperator dBBindFirst(DoubleBinaryOperator func, double first) {
+    public static DoubleUnaryOperator dbBindFirst(DoubleBinaryOperator func, double first) {
         Objects.requireNonNull(func);
         return d -> func.applyAsDouble(first, d);
     }
 
     //==========================================================
 
-    public static IntUnaryOperator iBBindSecond(IntBinaryOperator func, int second) {
+    public static IntUnaryOperator ibBindSecond(IntBinaryOperator func, int second) {
         Objects.requireNonNull(func);
         return i -> func.applyAsInt(i, second);
     }
 
-    public static LongUnaryOperator lBBindSecond(LongBinaryOperator func, long second) {
+    public static LongUnaryOperator lbBindSecond(LongBinaryOperator func, long second) {
         Objects.requireNonNull(func);
         return i -> func.applyAsLong(i, second);
     }
 
-    public static DoubleUnaryOperator dBBindSecond(DoubleBinaryOperator func, double second) {
+    public static DoubleUnaryOperator dbBindSecond(DoubleBinaryOperator func, double second) {
         Objects.requireNonNull(func);
         return d -> func.applyAsDouble(d, second);
     }
@@ -192,7 +187,7 @@ public class Functions {
 
     //==========================================================
 
-    public static <T, R> Supplier<R> sBindFirst(Function<T, R> func, T first) {
+    public static <T, R> Supplier<R> bindFirst(Function<T, R> func, T first) {
         Objects.requireNonNull(func);
         return () -> func.apply(first);
     }
