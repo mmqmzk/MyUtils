@@ -9,7 +9,9 @@ import com.sh.commons.tuple.TwoTuple;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 
+import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
@@ -72,7 +74,7 @@ public class Utils {
         return nextInt(base) < rate;
     }
 
-    public static OptionalInt randomChoose(int[] array) {
+    public static OptionalInt randomChoose(@Nullable int[] array) {
         int length;
         if (array == null || (length = array.length) <= 0) {
             return OptionalInt.empty();
@@ -80,7 +82,7 @@ public class Utils {
         return OptionalInt.of(get(array, nextInt(length)));
     }
 
-    public static OptionalLong randomChoose(long[] array) {
+    public static OptionalLong randomChoose(@Nullable long[] array) {
         int length;
         if (array == null || (length = array.length) <= 0) {
             return OptionalLong.empty();
@@ -88,7 +90,7 @@ public class Utils {
         return OptionalLong.of(get(array, nextInt(length)));
     }
 
-    public static OptionalDouble randomChoose(double[] array) {
+    public static OptionalDouble randomChoose(@Nullable double[] array) {
         int length;
         if (array == null || (length = array.length) <= 0) {
             return OptionalDouble.empty();
@@ -96,11 +98,11 @@ public class Utils {
         return OptionalDouble.of(get(array, nextInt(length)));
     }
 
-    public static <T> Optional<T> randomChoose(T[] array) {
+    public static <T> Optional<T> randomChoose(@Nullable T[] array) {
         return randomChoose(array, null);
     }
 
-    public static <T> Optional<T> randomChoose(T[] array, ToIntFunction<T> weigher) {
+    public static <T> Optional<T> randomChoose(@Nullable T[] array, @Nullable ToIntFunction<T> weigher) {
         if (array == null || array.length == 0) {
             return Optional.empty();
         }
@@ -108,11 +110,11 @@ public class Utils {
         return randomChoose(Arrays.stream(array), total, weigher);
     }
 
-    public static <T> Optional<T> randomChoose(Collection<T> collection) {
+    public static <T> Optional<T> randomChoose(@Nullable Collection<T> collection) {
         return randomChoose(collection, null);
     }
 
-    public static <T> Optional<T> randomChoose(Collection<T> collection, ToIntFunction<T> weigher) {
+    public static <T> Optional<T> randomChoose(@Nullable Collection<T> collection, @Nullable ToIntFunction<T> weigher) {
         if (collection == null) {
             return Optional.empty();
         }
@@ -165,7 +167,7 @@ public class Utils {
         return stream.mapToInt(weigher).sum();
     }
 
-    public static int randomIndex(int[] array) {
+    public static int randomIndex(@Nullable int[] array) {
         int length;
         if (array == null || (length = array.length) == 0) {
             return -1;
@@ -184,7 +186,7 @@ public class Utils {
         return -1;
     }
 
-    public static int randomIndex(long[] array) {
+    public static int randomIndex(@Nullable long[] array) {
         int length;
         if (array == null || (length = array.length) == 0) {
             return -1;
@@ -203,9 +205,9 @@ public class Utils {
         return -1;
     }
 
-    public static <T> int randomIndex(T[] array, ToIntFunction<T> weigher) {
+    public static <T> int randomIndex(@Nullable T[] array, @NonNull ToIntFunction<T> weigher) {
         int length;
-        if (array == null || weigher == null || (length = array.length) == 0) {
+        if (array == null || (length = array.length) == 0) {
             return -1;
         }
         int total = calculateTotalWeight(array, weigher);
@@ -222,13 +224,13 @@ public class Utils {
         return -1;
     }
 
-    public static int randomIndex(Integer[] array) {
+    public static int randomIndex(@Nullable Integer[] array) {
         return randomIndex(array, Integer::intValue);
     }
 
-    public static <T> int randomIndex(List<T> list, ToIntFunction<T> weigher) {
+    public static <T> int randomIndex(@Nullable List<T> list, @NonNull ToIntFunction<T> weigher) {
         int size;
-        if (list == null || weigher == null || (size = list.size()) == 0) {
+        if (list == null || (size = list.size()) == 0) {
             return -1;
         }
         int total = calculateTotalWeight(list, weigher);
@@ -245,15 +247,15 @@ public class Utils {
         return -1;
     }
 
-    public static int randomIndex(List<Integer> list) {
+    public static int randomIndex(@Nullable List<Integer> list) {
         return randomIndex(list, Integer::intValue);
     }
 
-    public static <T> List<T> randomChooseN(T[] array, int n) {
+    public static <T> List<T> randomChooseN(@Nullable T[] array, int n) {
         return randomChooseN(array, n, null);
     }
 
-    public static <T> List<T> randomChooseN(T[] array, int n, ToIntFunction<T> weigher) {
+    public static <T> List<T> randomChooseN(@Nullable T[] array, int n, @Nullable ToIntFunction<T> weigher) {
         if (array == null || array.length == 0 || n <= 0) {
             return Collections.emptyList();
         }
@@ -261,11 +263,11 @@ public class Utils {
         return randomChooseN(Arrays.stream(array), n, total, weigher);
     }
 
-    public static <T> List<T> randomChooseN(Collection<T> collection, int n) {
+    public static <T> List<T> randomChooseN(@Nullable Collection<T> collection, int n) {
         return randomChooseN(collection, n, null);
     }
 
-    public static <T> List<T> randomChooseN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
+    public static <T> List<T> randomChooseN(@Nullable Collection<T> collection, int n, @Nullable ToIntFunction<T> weigher) {
         if (collection == null || collection.size() == 0 || n <= 0) {
             return Collections.emptyList();
         }
@@ -296,18 +298,18 @@ public class Utils {
         return weigher == null ? 1 : weigher.applyAsInt(obj);
     }
 
-    public static <T> Optional<T> randomRemove(List<T> list) {
+    public static <T> Optional<T> randomRemove(@Nullable List<T> list) {
         if (list == null || list.isEmpty()) {
             return Optional.empty();
         }
         return Optional.ofNullable(list.remove(nextInt(list.size())));
     }
 
-    public static <T> Optional<T> randomRemove(Collection<T> collection) {
+    public static <T> Optional<T> randomRemove(@Nullable Collection<T> collection) {
         return randomRemove(collection, null);
     }
 
-    public static <T> Optional<T> randomRemove(Collection<T> collection, ToIntFunction<T> weigher) {
+    public static <T> Optional<T> randomRemove(@Nullable Collection<T> collection, @Nullable ToIntFunction<T> weigher) {
         if (collection == null || collection.isEmpty()) {
             return Optional.empty();
         }
@@ -315,11 +317,11 @@ public class Utils {
         return Optional.ofNullable(get(list, 0));
     }
 
-    public static <T> List<T> randomRemoveN(Collection<T> collection, int n) {
+    public static <T> List<T> randomRemoveN(@Nullable Collection<T> collection, int n) {
         return randomRemoveN(collection, n, null);
     }
 
-    public static <T> List<T> randomRemoveN(Collection<T> collection, int n, ToIntFunction<T> weigher) {
+    public static <T> List<T> randomRemoveN(@Nullable Collection<T> collection, int n, @Nullable ToIntFunction<T> weigher) {
         if (collection == null || collection.size() == 0 || n <= 0) {
             return Collections.emptyList();
         }
@@ -345,11 +347,11 @@ public class Utils {
         return result;
     }
 
-    public static int get(int[] array, int index) {
+    public static int get(@Nullable int[] array, int index) {
         return get(array, index, 0);
     }
 
-    public static int get(int[] array, int index, int defaultValue) {
+    public static int get(@Nullable int[] array, int index, int defaultValue) {
         int length;
         if (array == null || (length = array.length) == 0) {
             return defaultValue;
@@ -363,11 +365,11 @@ public class Utils {
         return array[index];
     }
 
-    public static long get(long[] array, int index) {
+    public static long get(@Nullable long[] array, int index) {
         return get(array, index, 0L);
     }
 
-    public static long get(long[] array, int index, long defaultValue) {
+    public static long get(@Nullable long[] array, int index, long defaultValue) {
         int length;
         if (array == null || (length = array.length) == 0) {
             return defaultValue;
@@ -381,11 +383,11 @@ public class Utils {
         return array[index];
     }
 
-    public static double get(double[] array, int index) {
+    public static double get(@Nullable double[] array, int index) {
         return get(array, index, 0.0);
     }
 
-    public static double get(double[] array, int index, double defaultValue) {
+    public static double get(@Nullable double[] array, int index, double defaultValue) {
         int length;
         if (array == null || (length = array.length) == 0) {
             return defaultValue;
@@ -399,11 +401,11 @@ public class Utils {
         return array[index];
     }
 
-    public static <T> T get(T[] array, int index) {
+    public static <T> T get(@Nullable T[] array, int index) {
         return get(array, index, null);
     }
 
-    public static <T> T get(T[] array, int index, T defaultValue) {
+    public static <T> T get(@Nullable T[] array, int index, T defaultValue) {
         int length;
         if (array == null || (length = array.length) == 0) {
             return defaultValue;
@@ -418,11 +420,11 @@ public class Utils {
         return t == null ? defaultValue : t;
     }
 
-    public static <T> T get(Collection<T> collection, int index) {
+    public static <T> T get(@Nullable Collection<T> collection, int index) {
         return get(collection, index, null);
     }
 
-    public static <T> T get(Collection<T> collection, int index, T defaultValue) {
+    public static <T> T get(@Nullable Collection<T> collection, int index, T defaultValue) {
         int size;
         if (collection == null || (size = collection.size()) == 0) {
             return defaultValue;
@@ -437,32 +439,30 @@ public class Utils {
         return t == null ? defaultValue : t;
     }
 
-    public static <T, R> Ordering<T> orderingFromToIntFunction(ToIntFunction<T> function) {
+    public static <T, R> Ordering<T> orderingFromToIntFunction(@NonNull ToIntFunction<T> function) {
         return orderingFromToIntFunction(function, true);
     }
 
-    public static <T, R> Ordering<T> orderingFromToIntFunction(ToIntFunction<T> function, boolean nullsFirst) {
-        Objects.requireNonNull(function);
+    public static <T, R> Ordering<T> orderingFromToIntFunction(@NonNull ToIntFunction<T> function, boolean nullsFirst) {
         Ordering<T> ordering = Ordering.from((a, b) ->
                 a == b ? 0 : Integer.compare(function.applyAsInt(a), function.applyAsInt(b)));
         return nullsFirst ? ordering.nullsFirst() : ordering.nullsLast();
     }
 
-    public static <T, R> Ordering<T> orderingFromFunction(Function<T, Comparable<R>> function) {
+    public static <T, R> Ordering<T> orderingFromFunction(@NonNull Function<T, Comparable<R>> function) {
         return orderingFromFunction(function, Ordering.natural(), true);
     }
 
-    public static <T, R> Ordering<T> orderingFromFunction(Function<T, Comparable<R>> function, boolean nullsFirst) {
+    public static <T, R> Ordering<T> orderingFromFunction(@NonNull Function<T, Comparable<R>> function, boolean nullsFirst) {
         return orderingFromFunction(function, Ordering.natural(), nullsFirst);
     }
 
-    public static <T, R> Ordering<T> orderingFromFunction(Function<T, R> function, Comparator<R> comparator) {
+    public static <T, R> Ordering<T> orderingFromFunction(@NonNull Function<T, R> function, Comparator<R> comparator) {
         return orderingFromFunction(function, comparator, true);
     }
 
-    public static <T, R> Ordering<T> orderingFromFunction(Function<T, R> function, Comparator<R> comparator, boolean nullsFirst) {
-        Objects.requireNonNull(function);
-        Objects.requireNonNull(comparator);
+    public static <T, R> Ordering<T> orderingFromFunction(@NonNull Function<T, R> function,
+                                                          @NonNull Comparator<R> comparator, boolean nullsFirst) {
         Ordering<T> ordering = Ordering.from((a, b) ->
                 a == b ? 0 : comparator.compare(function.apply(a), function.apply(b)));
         return nullsFirst ? ordering.nullsFirst() : ordering.nullsLast();
@@ -475,7 +475,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexLessThan(List<Integer> list, Integer target) {
+    public static int indexLessThan(@Nullable List<Integer> list, @Nullable Integer target) {
         return index(list, target, true, false);
     }
 
@@ -486,7 +486,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexLessThanOrEqualTo(List<Integer> list, Integer target) {
+    public static int indexLessThanOrEqualTo(@Nullable List<Integer> list, @Nullable Integer target) {
         return index(list, target, true, true);
     }
 
@@ -497,7 +497,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexLessThan(int[] list, int target) {
+    public static int indexLessThan(@Nullable int[] list, int target) {
         return index(list, target, true, false);
     }
 
@@ -508,7 +508,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexLessThanOrEqualTo(int[] list, int target) {
+    public static int indexLessThanOrEqualTo(@Nullable int[] list, int target) {
         return index(list, target, true, true);
     }
 
@@ -519,7 +519,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexMoreThan(List<Integer> list, Integer target) {
+    public static int indexMoreThan(@Nullable List<Integer> list, @Nullable Integer target) {
         return index(list, target, false, false);
     }
 
@@ -530,7 +530,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexMoreThanOrEqualTo(List<Integer> list, Integer target) {
+    public static int indexMoreThanOrEqualTo(@Nullable List<Integer> list, @Nullable Integer target) {
         return index(list, target, false, true);
     }
 
@@ -541,7 +541,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexMoreThan(int[] list, int target) {
+    public static int indexMoreThan(@Nullable int[] list, int target) {
         return index(list, target, false, false);
     }
 
@@ -552,7 +552,7 @@ public class Utils {
      * @param target
      * @return
      */
-    public static int indexMoreThanOrEqualTo(int[] list, int target) {
+    public static int indexMoreThanOrEqualTo(@Nullable int[] list, int target) {
         return index(list, target, false, true);
     }
 
@@ -594,7 +594,7 @@ public class Utils {
      * @param strings
      * @return
      */
-    public static int[] parseToInts(String[] strings) {
+    public static int[] parseToInts(@Nullable String[] strings) {
         if (strings == null) {
             return new int[0];
         }
@@ -605,7 +605,7 @@ public class Utils {
         return ints;
     }
 
-    public static int[] parseToInts(String string, String separator) {
+    public static int[] parseToInts(@Nullable String string, @NonNull String separator) {
         if (string == null || separator == null) {
             return new int[0];
         }
@@ -629,15 +629,15 @@ public class Utils {
         return null;
     }
 
-    public static int parseToInt(Object object) {
+    public static int parseToInt(@Nullable Object object) {
         return Ints.saturatedCast(parseToLong(object));
     }
 
-    public static int parseToInt(String string) {
+    public static int parseToInt(@Nullable String string) {
         return Ints.saturatedCast(parseToLong(string));
     }
 
-    public static long parseToLong(Object object) {
+    public static long parseToLong(@Nullable Object object) {
         if (object == null) {
             return 0L;
         }
@@ -648,7 +648,7 @@ public class Utils {
         return parseToLong(object.toString());
     }
 
-    public static long parseToLong(String string) {
+    public static long parseToLong(@Nullable String string) {
         if (string == null) {
             return 0L;
         }
@@ -696,7 +696,7 @@ public class Utils {
         return aLong == null ? 0L : aLong;
     }
 
-    public static double parseToDouble(Object object) {
+    public static double parseToDouble(@Nullable Object object) {
         if (object == null) {
             return 0.0;
         }
@@ -707,7 +707,7 @@ public class Utils {
         return parseToDouble(object.toString());
     }
 
-    public static double parseToDouble(String string) {
+    public static double parseToDouble(@Nullable String string) {
         if (string == null) {
             return 0.0;
         }
@@ -723,7 +723,7 @@ public class Utils {
         return aDouble == null ? 0.0 : aDouble;
     }
 
-    public static boolean parseToBoolean(Object object) {
+    public static boolean parseToBoolean(@Nullable Object object) {
         if (object == null) {
             return false;
         }
@@ -744,7 +744,7 @@ public class Utils {
      * @param string
      * @return
      */
-    public static boolean parseToBoolean(String string) {
+    public static boolean parseToBoolean(@Nullable String string) {
         if (string == null) {
             return false;
         }
