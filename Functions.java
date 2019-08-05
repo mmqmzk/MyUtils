@@ -2,6 +2,7 @@ package zk.util;
 
 import lombok.NonNull;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.DoubleStream;
@@ -97,6 +98,14 @@ public class Functions {
         return t -> func.apply(t, second);
     }
 
+    public static <T> UnaryOperator<T> bBindFirst(@NonNull BinaryOperator<T> func, T first) {
+        return t -> func.apply(first, t);
+    }
+
+    public static <T> UnaryOperator<T> bBindSecond(@NonNull BinaryOperator<T> func, T second) {
+        return t -> func.apply(t, second);
+    }
+
     public static <T> Supplier<T> bindFirst(@NonNull UnaryOperator<T> func, T first) {
         return () -> func.apply(first);
     }
@@ -153,27 +162,54 @@ public class Functions {
         return t -> func.test(t, second);
     }
 
+    public static <T> BooleanSupplier pBindFirst(@NonNull Predicate<T> func, T first) {
+        return () -> func.test(first);
+    }
+
     public static <T, R> Supplier<R> bindFirst(@NonNull Function<T, R> func, T first) {
         return () -> func.apply(first);
     }
 
-    public static <T> Stream<T> copyStream(@NonNull Collection<T> col) {
+    public static <T> Supplier<T> uBindFirst(@NonNull UnaryOperator<T> func, T first) {
+        return () -> func.apply(first);
+    }
+
+    public static <T> Stream<T> copyStream(@Nullable Collection<T> col) {
+        if (col == null || col.isEmpty()) {
+            return Stream.empty();
+        }
         return new ArrayList<>(col).stream();
     }
 
-    public static <T> Stream<T> copyStream(@NonNull T[] array) {
+    public static <T> Stream<T> copyStream(@Nullable T[] array) {
+        if (array == null || array.length == 0) {
+            return Stream.empty();
+        }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static IntStream copyStream(@NonNull int[] array) {
+    public static IntStream copyStream(@Nullable int[] array) {
+        if (array == null || array.length == 0) {
+            return IntStream.empty();
+        }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static LongStream copyStream(@NonNull long[] array) {
+    public static LongStream copyStream(@Nullable long[] array) {
+        if (array == null || array.length == 0) {
+            return LongStream.empty();
+        }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static DoubleStream copyStream(@NonNull double[] array) {
+    public static DoubleStream copyStream(@Nullable double[] array) {
+        if (array == null || array.length == 0) {
+            return DoubleStream.empty();
+        }
         return Arrays.stream(Arrays.copyOf(array, array.length));
+    }
+
+    public static <T> boolean noneMatch(@Nullable Stream<T> stream, @NonNull Predicate<T> predicate) {
+        return stream == null || stream.allMatch(predicate.negate());
     }
 }

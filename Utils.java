@@ -10,6 +10,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
@@ -58,6 +60,22 @@ public class Utils {
                 .append(element.getLineNumber());
     }
 
+    @SafeVarargs
+    public static <T> T firstNonNull(T first, T second, T... rest) {
+        if (first != null) {
+            return first;
+        } else if (second != null) {
+            return second;
+        } else {
+            for (T t : rest) {
+                if (t != null) {
+                    return t;
+                }
+            }
+            throw new NullPointerException();
+        }
+    }
+
     public static int nextInt(int i) {
         return ThreadLocalRandom.current().nextInt(i);
     }
@@ -68,6 +86,10 @@ public class Utils {
 
     public static boolean isLuck(int rate) {
         return isLuck(rate, 100);
+    }
+
+    public static Predicate<Integer> isLuckP(int base) {
+        return rate -> isLuck(rate, base);
     }
 
     public static boolean isLuck(int rate, int base) {
@@ -295,6 +317,9 @@ public class Utils {
     }
 
     private static <T> int getWeight(ToIntFunction<T> weigher, T obj) {
+        if (obj == null) {
+            return 0;
+        }
         return weigher == null ? 1 : weigher.applyAsInt(obj);
     }
 
@@ -329,7 +354,7 @@ public class Utils {
         if (total <= 0) {
             return Collections.emptyList();
         }
-        List<T> result = Lists.newArrayListWithCapacity(n);
+        List<T> result = Lists.newArrayListWithExpectedSize(n);
         for (; n > 0 && total > 0; n--) {
             int random = nextInt(total);
             for (Iterator<T> iterator = collection.iterator(); iterator.hasNext(); ) {
@@ -437,6 +462,99 @@ public class Utils {
         }
         T t = Iterables.get(collection, index);
         return t == null ? defaultValue : t;
+    }
+
+    public static <T> Function<T[], T> arrayGetI(int i) {
+        return Functions.bindSecond(Utils::get, i);
+    }
+
+    public static <T> Function<Collection<T>, T> collectionGetI(int i) {
+        return Functions.bindSecond(Utils::get, i);
+    }
+
+    public static Function<int[], Integer> intsGetI(int i) {
+        return Functions.bindSecond(Utils::get, i);
+    }
+
+    public static Function<String, String[]> splitBy(String separator) {
+        return Functions.bindSecond(String::split, separator);
+    }
+
+    public static Function<Object[], String> arrayJoinBy(String separator) {
+        return Functions.bindSecond(StringUtils::join, separator);
+    }
+
+    public static <T> Function<Iterable<T>, String> iterableJoinBy(String separator) {
+        return Functions.bindSecond(StringUtils::join, separator);
+    }
+
+    public static <T, V> Function<Map<T, V>, String> mapJoinBy(String keyValueSeparator, String entrySeparator) {
+        return map ->
+                map.entrySet().stream()
+                        .map(entry ->
+                                entry.getKey() + keyValueSeparator + entry.getValue())
+                        .reduce(StringUtils.EMPTY, (t, c) ->
+                                t.isEmpty() ? c : t + entrySeparator + c);
+    }
+
+    public static UnaryOperator<String> append(String suffix) {
+        return Functions.bBindSecond(String::concat, suffix);
+    }
+
+    public static UnaryOperator<String> prepend(String prefix) {
+        return Functions.bBindFirst(String::concat, prefix);
+    }
+
+    public static <T> Predicate<T[]> arrayContains(T value) {
+        return Functions.pBindSecond(ArrayUtils::contains, value);
+    }
+
+    public static Predicate<int[]> intsContains(int value) {
+        return Functions.pBindSecond(ArrayUtils::contains, value);
+    }
+
+    public static <T> Predicate<Collection<T>> collectionContains(T value) {
+        return Functions.pBindSecond(Collection::contains, value);
+    }
+
+    public static <T> Predicate<String> stringContains(T value) {
+        return Functions.pBindSecond(StringUtils::contains, String.valueOf(value));
+    }
+
+    public static <T> Function<T[], Integer> arrayIndexOf(T value) {
+        return Functions.bindSecond(ArrayUtils::indexOf, value);
+    }
+
+    public static <T> Function<List<T>, Integer> listIndexOf(T value) {
+        return Functions.bindSecond(List::indexOf, value);
+    }
+
+    public static <T> Function<String, Integer> stringIndexOf(T value) {
+        return Functions.bindSecond(StringUtils::indexOf, String.valueOf(value));
+    }
+
+    public static <T> Function<int[], Integer> intsIndexOf(int value) {
+        return Functions.bindSecond(ArrayUtils::indexOf, value);
+    }
+
+    public static <T> Predicate<T> notEquals(T value) {
+        return Predicate.<T>isEqual(value).negate();
+    }
+
+    public static <T> Predicate<T> inCollection(Collection<T> collection) {
+        return Functions.pBindFirst(Collection::contains, collection);
+    }
+
+    public static <T> Predicate<T> inArray(T[] array) {
+        return Functions.pBindFirst(ArrayUtils::contains, array);
+    }
+
+    public static <T> Predicate<T> inString(String string) {
+        return Functions.joinP(String::valueOf, Functions.pBindFirst(StringUtils::contains, string));
+    }
+
+    public static Predicate<Collection<String>> containsIgnoreCase(String value) {
+        return col -> col.stream().anyMatch(Functions.pBindFirst(String::equalsIgnoreCase, value));
     }
 
     public static <T, R> Ordering<T> orderingFromToIntFunction(@NonNull ToIntFunction<T> function) {
