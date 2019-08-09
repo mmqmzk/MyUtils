@@ -1,5 +1,6 @@
 package zk.util;
 
+import com.google.common.collect.Streams;
 import lombok.NonNull;
 
 import javax.annotation.Nullable;
@@ -90,11 +91,11 @@ public class Functions {
         return key -> map.getOrDefault(key, defaultValue);
     }
 
-    public static <T, U, R> Function<U, R> bindFirst(@NonNull BiFunction<T, U, R> func, T first) {
-        return u -> func.apply(first, u);
+    public static <T, V, R> Function<V, R> bindFirst(@NonNull BiFunction<T, V, R> func, T first) {
+        return v -> func.apply(first, v);
     }
 
-    public static <T, U, R> Function<T, R> bindSecond(@NonNull BiFunction<T, U, R> func, U second) {
+    public static <T, V, R> Function<T, R> bindSecond(@NonNull BiFunction<T, V, R> func, V second) {
         return t -> func.apply(t, second);
     }
 
@@ -104,10 +105,6 @@ public class Functions {
 
     public static <T> UnaryOperator<T> bBindSecond(@NonNull BinaryOperator<T> func, T second) {
         return t -> func.apply(t, second);
-    }
-
-    public static <T> Supplier<T> bindFirst(@NonNull UnaryOperator<T> func, T first) {
-        return () -> func.apply(first);
     }
 
     public static IntSupplier iuBindFirst(@NonNull IntUnaryOperator func, int first) {
@@ -146,24 +143,20 @@ public class Functions {
         return d -> func.applyAsDouble(d, second);
     }
 
-    public static <T, U> Consumer<U> cBindFirst(@NonNull BiConsumer<T, U> func, T first) {
-        return u -> func.accept(first, u);
+    public static <T, V> Consumer<V> cBindFirst(@NonNull BiConsumer<T, V> func, T first) {
+        return v -> func.accept(first, v);
     }
 
-    public static <T, U> Consumer<T> cBindSecond(@NonNull BiConsumer<T, U> func, U second) {
+    public static <T, V> Consumer<T> cBindSecond(@NonNull BiConsumer<T, V> func, V second) {
         return t -> func.accept(t, second);
     }
 
-    public static <T, U> Predicate<U> pBindFirst(@NonNull BiPredicate<T, U> func, T first) {
-        return u -> func.test(first, u);
+    public static <T, V> Predicate<V> pBindFirst(@NonNull BiPredicate<T, V> func, T first) {
+        return v -> func.test(first, v);
     }
 
-    public static <T, U> Predicate<T> pBindSecond(@NonNull BiPredicate<T, U> func, U second) {
+    public static <T, V> Predicate<T> pBindSecond(@NonNull BiPredicate<T, V> func, V second) {
         return t -> func.test(t, second);
-    }
-
-    public static <T> BooleanSupplier pBindFirst(@NonNull Predicate<T> func, T first) {
-        return () -> func.test(first);
     }
 
     public static <T, R> Supplier<R> bindFirst(@NonNull Function<T, R> func, T first) {
@@ -174,11 +167,11 @@ public class Functions {
         return () -> func.apply(first);
     }
 
-    public static <T> Stream<T> copyStream(@Nullable Collection<T> col) {
-        if (col == null || col.isEmpty()) {
+    public static <T> Stream<T> copyStream(@Nullable Collection<T> collection) {
+        if (collection == null || collection.isEmpty()) {
             return Stream.empty();
         }
-        return new ArrayList<>(col).stream();
+        return new ArrayList<>(collection).stream();
     }
 
     public static <T> Stream<T> copyStream(@Nullable T[] array) {
@@ -209,7 +202,64 @@ public class Functions {
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
+    @SafeVarargs
+    public static <T> Stream<T> joinStream(Collection<? extends T>... collections) {
+        return Arrays.stream(collections).filter(Objects::nonNull).flatMap(Collection::stream);
+    }
+
+    @SafeVarargs
+    public static <T, V extends T> Stream<T> joinStream(V[]... arrays) {
+        return Arrays.stream(arrays).filter(Objects::nonNull).flatMap(Arrays::stream);
+    }
+
+    @SafeVarargs
+    public static <T, V extends T, S extends T> Stream<T> addStream(@Nullable Collection<V> collection, S... values) {
+        Stream<V> stream;
+        if (collection == null || collection.isEmpty()) {
+            if (values.length == 0) {
+                return Stream.empty();
+            }
+            stream = Stream.empty();
+        } else {
+            stream = collection.stream();
+        }
+        return Streams.concat(stream, Arrays.stream(values));
+    }
+
+    @SafeVarargs
+    public static <T, V extends T, S extends T> Stream<T> addStream(@Nullable V[] array, S... values) {
+        Stream<V> stream;
+        if (array == null || array.length == 0) {
+            if (values.length == 0) {
+                return Stream.empty();
+            }
+            stream = Stream.empty();
+        } else {
+            stream = Arrays.stream(array);
+        }
+        return Streams.concat(stream, Arrays.stream(values));
+    }
+
     public static <T> boolean noneMatch(@Nullable Stream<T> stream, @NonNull Predicate<T> predicate) {
         return stream == null || stream.allMatch(predicate.negate());
+    }
+
+    public static <T> Predicate<T> negate(@NonNull Predicate<T> predicate) {
+        return predicate.negate();
+    }
+
+    public static <T> Predicate<T> or(@NonNull Predicate<? super T> predicate,
+                                      @NonNull Predicate<? super T> predicate2) {
+        return t -> predicate.test(t) || predicate.test(t);
+    }
+
+    public static <T> Predicate<T> and(@NonNull Predicate<? super T> predicate,
+                                       @NonNull Predicate<? super T> predicate2) {
+        return t -> predicate.test(t) && predicate2.test(t);
+    }
+
+    public static <T> Predicate<T> xor(@NonNull Predicate<? super T> predicate,
+                                       @NonNull Predicate<? super T> predicate2) {
+        return t -> predicate.test(t) ^ predicate2.test(t);
     }
 }
