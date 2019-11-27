@@ -10,8 +10,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
@@ -73,6 +71,36 @@ public class Utils {
                 }
             }
             throw new NullPointerException();
+        }
+    }
+
+    public static int firstNonZero(int first, int second, int... rest) {
+        if (first != 0) {
+            return first;
+        } else if (second != 0) {
+            return second;
+        } else {
+            for (int i : rest) {
+                if (i != 0) {
+                    return i;
+                }
+            }
+            return 0;
+        }
+    }
+
+    public static long firstNonZero(long first, long second, long... rest) {
+        if (first != 0L) {
+            return first;
+        } else if (second != 0L) {
+            return second;
+        } else {
+            for (long i : rest) {
+                if (i != 0L) {
+                    return i;
+                }
+            }
+            return 0L;
         }
     }
 
@@ -474,87 +502,6 @@ public class Utils {
 
     public static Function<int[], Integer> intsGetI(int i) {
         return Functions.bindSecond(Utils::get, i);
-    }
-
-    public static Function<String, String[]> splitBy(String separator) {
-        return Functions.bindSecond(String::split, separator);
-    }
-
-    public static Function<Object[], String> arrayJoinBy(String separator) {
-        return Functions.bindSecond(StringUtils::join, separator);
-    }
-
-    public static <T> Function<Iterable<T>, String> iterableJoinBy(String separator) {
-        return Functions.bindSecond(StringUtils::join, separator);
-    }
-
-    public static <T, V> Function<Map<T, V>, String> mapJoinBy(String keyValueSeparator, String entrySeparator) {
-        return map ->
-                map.entrySet().stream()
-                        .map(entry ->
-                                entry.getKey() + keyValueSeparator + entry.getValue())
-                        .reduce(StringUtils.EMPTY, (t, c) ->
-                                t.isEmpty() ? c : t + entrySeparator + c);
-    }
-
-    public static UnaryOperator<String> append(String suffix) {
-        return Functions.bBindSecond(String::concat, suffix);
-    }
-
-    public static UnaryOperator<String> prepend(String prefix) {
-        return Functions.bBindFirst(String::concat, prefix);
-    }
-
-    public static <T> Predicate<T[]> arrayContains(T value) {
-        return Functions.pBindSecond(ArrayUtils::contains, value);
-    }
-
-    public static Predicate<int[]> intsContains(int value) {
-        return Functions.pBindSecond(ArrayUtils::contains, value);
-    }
-
-    public static <T> Predicate<Collection<T>> collectionContains(T value) {
-        return Functions.pBindSecond(Collection::contains, value);
-    }
-
-    public static <T> Predicate<String> stringContains(T value) {
-        return Functions.pBindSecond(StringUtils::contains, String.valueOf(value));
-    }
-
-    public static <T> Function<T[], Integer> arrayIndexOf(T value) {
-        return Functions.bindSecond(ArrayUtils::indexOf, value);
-    }
-
-    public static <T> Function<List<T>, Integer> listIndexOf(T value) {
-        return Functions.bindSecond(List::indexOf, value);
-    }
-
-    public static <T> Function<String, Integer> stringIndexOf(T value) {
-        return Functions.bindSecond(StringUtils::indexOf, String.valueOf(value));
-    }
-
-    public static <T> Function<int[], Integer> intsIndexOf(int value) {
-        return Functions.bindSecond(ArrayUtils::indexOf, value);
-    }
-
-    public static <T> Predicate<T> notEquals(T value) {
-        return Predicate.<T>isEqual(value).negate();
-    }
-
-    public static <T> Predicate<T> inCollection(Collection<T> collection) {
-        return Functions.pBindFirst(Collection::contains, collection);
-    }
-
-    public static <T> Predicate<T> inArray(T[] array) {
-        return Functions.pBindFirst(ArrayUtils::contains, array);
-    }
-
-    public static <T> Predicate<T> inString(String string) {
-        return Functions.joinP(String::valueOf, Functions.pBindFirst(StringUtils::contains, string));
-    }
-
-    public static Predicate<Collection<String>> containsIgnoreCase(String value) {
-        return col -> col.stream().anyMatch(Functions.pBindFirst(String::equalsIgnoreCase, value));
     }
 
     public static <T, R> Ordering<T> orderingFromToIntFunction(@NonNull ToIntFunction<T> function) {
