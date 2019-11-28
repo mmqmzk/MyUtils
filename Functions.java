@@ -142,11 +142,11 @@ public class Functions {
     }
 
     public static <T> UnaryOperator<T> bBindFirst(@NonNull BinaryOperator<T> func, T first) {
-        return (UnaryOperator<T>) bindFirst(func, first);
+        return v -> func.apply(first, v);
     }
 
     public static <T> UnaryOperator<T> bBindSecond(@NonNull BinaryOperator<T> func, T second) {
-        return (UnaryOperator<T>) bindSecond(func, second);
+        return t -> func.apply(t, second);
     }
 
     public static IntSupplier iuBindFirst(@NonNull IntUnaryOperator func, int first) {
