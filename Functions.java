@@ -28,7 +28,8 @@ public class Functions {
         };
     }
 
-    public static <T, V, R> Function<T, R> join(@NonNull Function<T, V> before, @NonNull Function<V, R> after) {
+    public static <T, V, R> Function<T, R> join(@NonNull Function<T, V> before,
+                                                @NonNull Function<V, R> after) {
         return before.andThen(after);
     }
 
@@ -45,28 +46,53 @@ public class Functions {
         return func1.andThen(func2).andThen(func3).andThen(func4);
     }
 
-    public static <T, V> Predicate<T> joinP(@NonNull Function<T, V> function, @NonNull Predicate<V> predicate) {
+    public static <T, V> Predicate<T> joinP(@NonNull Function<T, V> function,
+                                            @NonNull Predicate<V> predicate) {
         return t -> predicate.test(function.apply(t));
     }
 
     public static <T, U, V> Predicate<T> joinP(@NonNull Function<T, U> func1,
-                                               @NonNull Function<U, V> func2, @NonNull Predicate<V> predicate) {
+                                               @NonNull Function<U, V> func2,
+                                               @NonNull Predicate<V> predicate) {
         return t -> predicate.test(func2.apply(func1.apply(t)));
     }
 
-    public static <T, R> Consumer<T> joinC(@NonNull Function<T, R> function, @NonNull Consumer<R> consumer) {
+    public static <T, U, V, W> Predicate<T> joinP(@NonNull Function<T, U> func1,
+                                                  @NonNull Function<U, V> func2,
+                                                  @NonNull Function<V, W> func3,
+                                                  @NonNull Predicate<W> predicate) {
+        return t -> predicate.test(func3.apply(func2.apply(func1.apply(t))));
+    }
+
+    public static <T, R> Consumer<T> joinC(@NonNull Function<T, R> function,
+                                           @NonNull Consumer<R> consumer) {
         return t -> consumer.accept(function.apply(t));
     }
 
-    public static <T, R> Function<T, R> joinCS(@NonNull Consumer<T> consumer, @NonNull Supplier<R> supplier) {
+    public static <T, U, V> Consumer<T> joinC(@NonNull Function<T, U> func1,
+                                              @NonNull Function<U, V> func2,
+                                              @NonNull Consumer<V> consumer) {
+        return t -> consumer.accept(func2.apply(func1.apply(t)));
+    }
+
+    public static <T, U, V, W> Consumer<T> joinC(@NonNull Function<T, U> func1,
+                                                 @NonNull Function<U, V> func2,
+                                                 @NonNull Function<V, W> func3,
+                                                 @NonNull Consumer<W> consumer) {
+        return t -> consumer.accept(func3.apply(func2.apply(func1.apply(t))));
+    }
+
+    public static <T, R> Function<T, R> joinS(@NonNull Consumer<T> consumer,
+                                              @NonNull Supplier<R> supplier) {
         return t -> {
             consumer.accept(t);
             return supplier.get();
         };
     }
 
-    public static <T> Consumer<T> joinCC(@NonNull Consumer<T> before, @NonNull Consumer<T> after) {
-        return before.andThen(after);
+    @SafeVarargs
+    public static <T> Consumer<T> joinCC(@NonNull Consumer<T>... consumers) {
+        return Arrays.stream(consumers).filter(Objects::nonNull).reduce(Consumer::andThen).orElse(empty());
     }
 
     public static <T> Supplier<T> constant(T value) {
@@ -227,21 +253,21 @@ public class Functions {
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static IntStream copyStream(@Nullable int[] array) {
+    public static IntStream copyIntStream(@Nullable int[] array) {
         if (array == null || array.length == 0) {
             return IntStream.empty();
         }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static LongStream copyStream(@Nullable long[] array) {
+    public static LongStream copyLongStream(@Nullable long[] array) {
         if (array == null || array.length == 0) {
             return LongStream.empty();
         }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static DoubleStream copyStream(@Nullable double[] array) {
+    public static DoubleStream copyDoubleStream(@Nullable double[] array) {
         if (array == null || array.length == 0) {
             return DoubleStream.empty();
         }
@@ -305,7 +331,7 @@ public class Functions {
         return t -> Arrays.stream(predicates).map(p -> p.test(t)).reduce(Boolean.FALSE, Boolean::logicalOr);
     }
 
-    public static <T, R> Function<T, R> ignoreFirst(@NonNull Supplier<R> supplier) {
+    public static <T, R> Function<T, R> sIgnoreFirst(@NonNull Supplier<R> supplier) {
         return t -> supplier.get();
     }
 
