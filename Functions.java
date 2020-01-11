@@ -82,17 +82,31 @@ public class Functions {
         return t -> consumer.accept(func3.apply(func2.apply(func1.apply(t))));
     }
 
-    public static <T, R> Function<T, R> joinS(@NonNull Consumer<T> consumer,
-                                              @NonNull Supplier<R> supplier) {
+    @SafeVarargs
+    public static <T, R> Function<T, R> joinS(@NonNull Supplier<R> supplier,
+                                              Consumer<? super T>... consumers) {
         return t -> {
-            consumer.accept(t);
+            Arrays.stream(consumers)
+                    .filter(Objects::nonNull)
+                    .forEach(cBindSecond(Consumer::accept, t));
             return supplier.get();
         };
     }
 
     @SafeVarargs
     public static <T> Consumer<T> joinCC(@NonNull Consumer<T>... consumers) {
-        return Arrays.stream(consumers).filter(Objects::nonNull).reduce(Consumer::andThen).orElse(empty());
+        return Arrays.stream(consumers)
+                .filter(Objects::nonNull)
+                .reduce(Consumer::andThen)
+                .orElseGet(Functions::empty);
+    }
+
+    public static <T> Function<T, Boolean> p2F(Predicate<T> predicate) {
+        return predicate::test;
+    }
+
+    public static <T> Predicate<T> f2P(Function<T, Boolean> func) {
+        return t -> Optional.ofNullable(func.apply(t)).orElse(Boolean.FALSE);
     }
 
     public static <T> Supplier<T> constant(T value) {
@@ -125,6 +139,10 @@ public class Functions {
 
     public static <T, R> Function<T, R> always(R value) {
         return t -> value;
+    }
+
+    public static <T> Predicate<T> equal(T t) {
+        return Predicate.isEqual(t);
     }
 
     public static <T> Predicate<T> notEqual(T t) {
@@ -246,28 +264,29 @@ public class Functions {
         return new ArrayList<>(collection).stream();
     }
 
-    public static <T> Stream<T> copyStream(@Nullable T[] array) {
+    @SafeVarargs
+    public static <T> Stream<T> copyStream(T... array) {
         if (array == null || array.length == 0) {
             return Stream.empty();
         }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static IntStream copyIntStream(@Nullable int[] array) {
+    public static IntStream copyIntStream(int... array) {
         if (array == null || array.length == 0) {
             return IntStream.empty();
         }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static LongStream copyLongStream(@Nullable long[] array) {
+    public static LongStream copyLongStream(long... array) {
         if (array == null || array.length == 0) {
             return LongStream.empty();
         }
         return Arrays.stream(Arrays.copyOf(array, array.length));
     }
 
-    public static DoubleStream copyDoubleStream(@Nullable double[] array) {
+    public static DoubleStream copyDoubleStream(double... array) {
         if (array == null || array.length == 0) {
             return DoubleStream.empty();
         }
@@ -323,12 +342,15 @@ public class Functions {
 
     @SafeVarargs
     public static <T> Predicate<T> and(@NonNull Predicate<? super T>... predicates) {
-        return t -> Arrays.stream(predicates).map(Predicate::negate).noneMatch(pBindSecond(Predicate::test, t));
+        return t -> Arrays.stream(predicates).allMatch(pBindSecond(Predicate::test, t));
     }
 
     @SafeVarargs
     public static <T> Predicate<T> xor(@NonNull Predicate<? super T>... predicates) {
-        return t -> Arrays.stream(predicates).map(p -> p.test(t)).reduce(Boolean.FALSE, Boolean::logicalOr);
+        return t ->
+                Arrays.stream(predicates)
+                        .map(bindSecond(Predicate::test, t))
+                        .reduce(Boolean.TRUE, Boolean::logicalXor);
     }
 
     public static <T, R> Function<T, R> sIgnoreFirst(@NonNull Supplier<R> supplier) {
@@ -367,20 +389,165 @@ public class Functions {
         return (t, v) -> consumer.accept(t);
     }
 
+    public static UnaryOperator<Integer> plusNBoxed(int n) {
+        return box(plusN(n));
+    }
+
     public static IntUnaryOperator plusN(int n) {
         return ibBindFirst(Integer::sum, n);
+    }
+
+    public static UnaryOperator<Integer> negateBoxed() {
+        return box(negate());
+    }
+
+    public static IntUnaryOperator negate() {
+        return i -> -i;
+    }
+
+    public static UnaryOperator<Long> plusNBoxed(long n) {
+        return box(plusN(n));
     }
 
     public static LongUnaryOperator plusN(long n) {
         return lbBindFirst(Long::sum, n);
     }
 
+    public static UnaryOperator<Long> negateLBoxed() {
+        return box(negateL());
+    }
+
+    public static LongUnaryOperator negateL() {
+        return l -> -l;
+    }
+
+    public static UnaryOperator<Double> plusNBoxed(double n) {
+        return box(plusN(n));
+    }
+
     public static DoubleUnaryOperator plusN(double n) {
         return dbBindFirst(Double::sum, n);
     }
 
-    public static <T> Predicate<T> inArray(T[] array) {
+    public static UnaryOperator<Double> negateDBoxed() {
+        return box(negateD());
+    }
+
+    public static DoubleUnaryOperator negateD() {
+        return d -> -d;
+    }
+
+    public static Predicate<Integer> greaterBoxed(int i) {
+        return t -> t != null && t > i;
+    }
+
+    public static IntPredicate greater(int i) {
+        return t -> t > i;
+    }
+
+    public static Predicate<Integer> greaterOrEqualBoxed(int i) {
+        return t -> t != null && t >= i;
+    }
+
+    public static IntPredicate greaterOrEqual(int i) {
+        return t -> t >= i;
+    }
+
+    public static Predicate<Integer> lessBoxed(int i) {
+        return t -> t != null && t < i;
+    }
+
+    public static IntPredicate less(int i) {
+        return t -> t < i;
+    }
+
+    public static Predicate<Integer> lessOrEqualBoxed(int i) {
+        return t -> t != null && t <= i;
+    }
+
+    public static IntPredicate lessOrEqual(int i) {
+        return t -> t <= i;
+    }
+
+    public static Predicate<Long> greaterBoxed(long l) {
+        return t -> t != null && t > l;
+    }
+
+    public static LongPredicate greater(long l) {
+        return t -> t > l;
+    }
+
+    public static Predicate<Long> greaterOrEqualBoxed(long l) {
+        return t -> t != null && t >= l;
+    }
+
+    public static LongPredicate greaterOrEqual(long l) {
+        return t -> t >= l;
+    }
+
+    public static Predicate<Long> lessBoxed(long l) {
+        return t -> t != null && t < l;
+    }
+
+    public static LongPredicate less(long l) {
+        return t -> t < l;
+    }
+
+    public static Predicate<Long> lessOrEqualBoxed(long l) {
+        return t -> t != null && t <= l;
+    }
+
+    public static LongPredicate lessOrEqual(long l) {
+        return t -> t <= l;
+    }
+
+    public static Predicate<Double> greaterBoxed(double d) {
+        return t -> t != null && t > d;
+    }
+
+    public static DoublePredicate greater(double d) {
+        return t -> t > d;
+    }
+
+    public static Predicate<Double> greaterOrEqualBoxed(double d) {
+        return t -> t != null && t >= d;
+    }
+
+    public static DoublePredicate greaterOrEqual(double d) {
+        return t -> t >= d;
+    }
+
+    public static Predicate<Double> lessBoxed(double d) {
+        return t -> t != null && t < d;
+    }
+
+    public static DoublePredicate less(double d) {
+        return t -> t < d;
+    }
+
+    public static Predicate<Double> lessOrEqualBoxed(double d) {
+        return t -> t != null && t <= d;
+    }
+
+    public static DoublePredicate lessOrEqual(double d) {
+        return t -> t <= d;
+    }
+
+    @SafeVarargs
+    public static <T> Predicate<T> inArray(T... array) {
         return pBindFirst(ArrayUtils::contains, array);
+    }
+
+    public static IntPredicate inInts(int... array) {
+        return i -> ArrayUtils.contains(array, i);
+    }
+
+    public static LongPredicate inLongs(long... array) {
+        return l -> ArrayUtils.contains(array, l);
+    }
+
+    public static DoublePredicate inDoubles(double... array) {
+        return d -> ArrayUtils.contains(array, d);
     }
 
     public static <T> Predicate<T> inCollection(@NonNull Collection<T> collection) {
@@ -405,10 +572,21 @@ public class Functions {
     }
 
     public static <T> Function<String, Integer> stringIndexOf(T value) {
+        if (value == null) {
+            return always(-1);
+        }
         return bindSecond(StringUtils::indexOf, String.valueOf(value));
     }
 
-    public static <T> Function<int[], Integer> intsIndexOf(int value) {
+    public static Function<int[], Integer> intsIndexOf(int value) {
+        return bindSecond(ArrayUtils::indexOf, value);
+    }
+
+    public static Function<long[], Integer> longIndexOf(long value) {
+        return bindSecond(ArrayUtils::indexOf, value);
+    }
+
+    public static Function<double[], Integer> doubleIndexOf(double value) {
         return bindSecond(ArrayUtils::indexOf, value);
     }
 
@@ -425,31 +603,38 @@ public class Functions {
     }
 
     public static <T> Predicate<String> stringContains(T value) {
+        if (value == null) {
+            return alwaysFalse();
+        }
         return pBindSecond(StringUtils::contains, String.valueOf(value));
     }
 
     public static Predicate<Collection<String>> containsIgnoreCase(String value) {
+        if (value == null) {
+            return alwaysFalse();
+        }
         return and(Objects::nonNull, negate(Collection::isEmpty),
                 joinP(Collection::stream, pBindSecond(Stream::anyMatch, pBindFirst(String::equalsIgnoreCase, value))));
     }
 
-    public static Function<String, String[]> splitBy(String separator) {
+    public static Function<String, String[]> splitBy(@NonNull String separator) {
         return bindSecond(String::split, separator);
     }
 
-    public static Function<String, Stream<String>> splitToStream(String separator) {
+    public static Function<String, Stream<String>> splitToStream(@NonNull String separator) {
         return join(splitBy(separator), Arrays::stream);
     }
 
-    public static Function<Object[], String> arrayJoinBy(String separator) {
+    public static Function<Object[], String> arrayJoinBy(@NonNull String separator) {
         return bindSecond(StringUtils::join, separator);
     }
 
-    public static <T> Function<Iterable<T>, String> iterableJoinBy(String separator) {
+    public static <T> Function<Iterable<T>, String> iterableJoinBy(@NonNull String separator) {
         return bindSecond(StringUtils::join, separator);
     }
 
-    public static <T, V> Function<Map<T, V>, String> mapJoinBy(String keyValueSeparator, String entrySeparator) {
+    public static <T, V> Function<Map<T, V>, String> mapJoinBy(@NonNull String keyValueSeparator,
+                                                               @NonNull String entrySeparator) {
         return map ->
                 map.entrySet().stream()
                         .map(entry ->
@@ -464,5 +649,167 @@ public class Functions {
 
     public static UnaryOperator<String> prepend(String prefix) {
         return bBindFirst(String::concat, prefix);
+    }
+
+    public static <T> Stream<T> reverse(@NonNull Stream<T> stream) {
+        Deque<T> deque = new ArrayDeque<>();
+        stream.forEachOrdered(deque::addFirst);
+        return deque.stream();
+    }
+
+    public static IntStream reverse(@NonNull IntStream stream) {
+        Deque<Integer> deque = new ArrayDeque<>();
+        stream.boxed().forEachOrdered(deque::addFirst);
+        return deque.stream().mapToInt(Integer::intValue);
+    }
+
+    public static LongStream reverse(@NonNull LongStream stream) {
+        Deque<Long> deque = new ArrayDeque<>();
+        stream.boxed().forEachOrdered(deque::addFirst);
+        return deque.stream().mapToLong(Long::longValue);
+    }
+
+    public static DoubleStream reverse(@NonNull DoubleStream stream) {
+        Deque<Double> deque = new LinkedList<>();
+        stream.boxed().forEachOrdered(deque::addFirst);
+        return deque.stream().mapToDouble(Double::doubleValue);
+    }
+
+    public static <T> Stream<T> reverseStream(Collection<T> collection) {
+        if (collection == null || collection.isEmpty()) {
+            return Stream.empty();
+        }
+        Deque<T> deque = new ArrayDeque<>(collection.size());
+        collection.forEach(deque::addFirst);
+        return deque.stream();
+    }
+
+    @SafeVarargs
+    public static <T> Stream<T> reverseStream(T... array) {
+        if (array == null || array.length == 0) {
+            return Stream.empty();
+        }
+        ArrayUtils.reverse(Arrays.copyOf(array, array.length));
+        return Arrays.stream(array);
+    }
+
+    public static IntStream reverseStream(int... array) {
+        if (array == null || array.length == 0) {
+            return IntStream.empty();
+        }
+        ArrayUtils.reverse(Arrays.copyOf(array, array.length));
+        return Arrays.stream(array);
+    }
+
+    public static LongStream reverseStream(long... array) {
+        if (array == null || array.length == 0) {
+            return LongStream.empty();
+        }
+        ArrayUtils.reverse(Arrays.copyOf(array, array.length));
+        return Arrays.stream(array);
+    }
+
+    public static DoubleStream reverseStream(double... array) {
+        if (array == null || array.length == 0) {
+            return DoubleStream.empty();
+        }
+        ArrayUtils.reverse(Arrays.copyOf(array, array.length));
+        return Arrays.stream(array);
+    }
+
+    public static <R> IntFunction<R> unBoxI(@NonNull Function<Integer, R> func) {
+        return func::apply;
+    }
+
+    public static <R> LongFunction<R> unBoxL(@NonNull Function<Long, R> func) {
+        return func::apply;
+    }
+
+    public static <R> DoubleFunction<R> unBoxD(@NonNull Function<Double, R> func) {
+        return func::apply;
+    }
+
+    public static <T> ToIntFunction<T> unBoxTI(@NonNull Function<T, Integer> func) {
+        return t -> Optional.ofNullable(func.apply(t)).orElse(0);
+    }
+
+    public static <T> ToLongFunction<T> unBoxTL(@NonNull Function<T, Long> func) {
+        return t -> Optional.ofNullable(func.apply(t)).orElse(0L);
+    }
+
+    public static <T> ToDoubleFunction<T> unBoxTD(@NonNull Function<T, Double> func) {
+        return t -> Optional.ofNullable(func.apply(t)).orElse(0.0);
+    }
+
+    public static IntUnaryOperator unBoxIU(@NonNull UnaryOperator<Integer> func) {
+        return i -> Optional.ofNullable(func.apply(i)).orElse(0);
+    }
+
+    public static LongUnaryOperator unBoxLU(@NonNull UnaryOperator<Long> func) {
+        return i -> Optional.ofNullable(func.apply(i)).orElse(0L);
+    }
+
+    public static DoubleUnaryOperator unBoxDU(@NonNull UnaryOperator<Double> func) {
+        return i -> Optional.ofNullable(func.apply(i)).orElse(0.0);
+    }
+
+    public static IntPredicate unBoxIP(Predicate<Integer> predicate) {
+        return predicate::test;
+    }
+
+    public static LongPredicate unBoxLP(Predicate<Long> predicate) {
+        return predicate::test;
+    }
+
+    public static DoublePredicate unBoxDP(Predicate<Double> predicate) {
+        return predicate::test;
+    }
+
+    public static <R> Function<Integer, R> box(@NonNull IntFunction<R> func) {
+        return i -> func.apply(i == null ? 0 : i);
+    }
+
+    public static <R> Function<Long, R> box(@NonNull LongFunction<R> func) {
+        return l -> func.apply(l == null ? 0L : l);
+    }
+
+    public static <R> Function<Double, R> box(@NonNull DoubleFunction<R> func) {
+        return d -> func.apply(d == null ? 0.0 : d);
+    }
+
+    public static <T> Function<T, Integer> box(@NonNull ToIntFunction<T> func) {
+        return func::applyAsInt;
+    }
+
+    public static <T> Function<T, Long> box(@NonNull ToLongFunction<T> func) {
+        return func::applyAsLong;
+    }
+
+    public static <T> Function<T, Double> box(@NonNull ToDoubleFunction<T> func) {
+        return func::applyAsDouble;
+    }
+
+    public static UnaryOperator<Integer> box(@NonNull IntUnaryOperator func) {
+        return i -> func.applyAsInt(i == null ? 0 : i);
+    }
+
+    public static UnaryOperator<Long> box(@NonNull LongUnaryOperator func) {
+        return l -> func.applyAsLong(l == null ? 0L : l);
+    }
+
+    public static UnaryOperator<Double> box(@NonNull DoubleUnaryOperator func) {
+        return d -> func.applyAsDouble(d == null ? 0.0 : d);
+    }
+
+    public static Predicate<Integer> box(@NonNull IntPredicate predicate) {
+        return and(Objects::nonNull, predicate::test);
+    }
+
+    public static Predicate<Long> box(@NonNull LongPredicate predicate) {
+        return and(Objects::nonNull, predicate::test);
+    }
+
+    public static Predicate<Double> box(@NonNull DoublePredicate predicate) {
+        return and(Objects::nonNull, predicate::test);
     }
 }
