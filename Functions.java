@@ -83,17 +83,6 @@ public class Functions {
     }
 
     @SafeVarargs
-    public static <T, R> Function<T, R> joinS(@NonNull Supplier<R> supplier,
-                                              Consumer<? super T>... consumers) {
-        return t -> {
-            Arrays.stream(consumers)
-                    .filter(Objects::nonNull)
-                    .forEach(cBindSecond(Consumer::accept, t));
-            return supplier.get();
-        };
-    }
-
-    @SafeVarargs
     public static <T> Consumer<T> joinCC(@NonNull Consumer<T>... consumers) {
         return Arrays.stream(consumers)
                 .filter(Objects::nonNull)
@@ -193,41 +182,10 @@ public class Functions {
         return t -> func.apply(t, second);
     }
 
-    public static IntSupplier iuBindFirst(@NonNull IntUnaryOperator func, int first) {
-        return () -> func.applyAsInt(first);
+    public static <T> Supplier<T> uBindFirst(@NonNull UnaryOperator<T> func, T first) {
+        return () -> func.apply(first);
     }
 
-    public static LongSupplier luBindFirst(@NonNull LongUnaryOperator func, long first) {
-        return () -> func.applyAsLong(first);
-    }
-
-    public static DoubleSupplier duBindFirst(@NonNull DoubleUnaryOperator func, double first) {
-        return () -> func.applyAsDouble(first);
-    }
-
-    public static IntUnaryOperator ibBindFirst(@NonNull IntBinaryOperator func, int first) {
-        return i -> func.applyAsInt(first, i);
-    }
-
-    public static LongUnaryOperator lbBindFirst(@NonNull LongBinaryOperator func, long first) {
-        return l -> func.applyAsLong(first, l);
-    }
-
-    public static DoubleUnaryOperator dbBindFirst(@NonNull DoubleBinaryOperator func, double first) {
-        return d -> func.applyAsDouble(first, d);
-    }
-
-    public static IntUnaryOperator ibBindSecond(@NonNull IntBinaryOperator func, int second) {
-        return i -> func.applyAsInt(i, second);
-    }
-
-    public static LongUnaryOperator lbBindSecond(@NonNull LongBinaryOperator func, long second) {
-        return i -> func.applyAsLong(i, second);
-    }
-
-    public static DoubleUnaryOperator dbBindSecond(@NonNull DoubleBinaryOperator func, double second) {
-        return d -> func.applyAsDouble(d, second);
-    }
 
     public static <T, V> Consumer<V> cBindFirst(@NonNull BiConsumer<T, V> func, T first) {
         return v -> func.accept(first, v);
@@ -245,12 +203,12 @@ public class Functions {
         return t -> func.test(t, second);
     }
 
-    public static <T, R> Supplier<R> sBindFirst(@NonNull Function<T, R> func, T first) {
-        return () -> func.apply(first);
-    }
-
     public static <T> BooleanSupplier bsBindFirst(@NonNull Predicate<T> predicate, T first) {
         return () -> predicate.test(first);
+    }
+
+    public static <T, R> Supplier<R> sBindFirst(@NonNull Function<T, R> func, T first) {
+        return () -> func.apply(first);
     }
 
     public static <T> Runnable rBindFirst(@NonNull Consumer<T> consumer, T first) {
@@ -394,7 +352,7 @@ public class Functions {
     }
 
     public static IntUnaryOperator plusN(int n) {
-        return ibBindFirst(Integer::sum, n);
+        return unBoxIU(bBindFirst(Integer::sum, n));
     }
 
     public static UnaryOperator<Integer> negateBoxed() {
@@ -410,7 +368,7 @@ public class Functions {
     }
 
     public static LongUnaryOperator plusN(long n) {
-        return lbBindFirst(Long::sum, n);
+        return unBoxLU(bBindFirst(Long::sum, n));
     }
 
     public static UnaryOperator<Long> negateLBoxed() {
@@ -426,7 +384,7 @@ public class Functions {
     }
 
     public static DoubleUnaryOperator plusN(double n) {
-        return dbBindFirst(Double::sum, n);
+        return unBoxDU(bBindFirst(Double::sum, n));
     }
 
     public static UnaryOperator<Double> negateDBoxed() {
@@ -539,15 +497,15 @@ public class Functions {
     }
 
     public static IntPredicate inInts(int... array) {
-        return i -> ArrayUtils.contains(array, i);
+        return unBoxIP(pBindFirst(ArrayUtils::contains, array));
     }
 
     public static LongPredicate inLongs(long... array) {
-        return l -> ArrayUtils.contains(array, l);
+        return unBoxLP(pBindFirst(ArrayUtils::contains, array));
     }
 
     public static DoublePredicate inDoubles(double... array) {
-        return d -> ArrayUtils.contains(array, d);
+        return unBoxDP(pBindFirst(ArrayUtils::contains, array));
     }
 
     public static <T> Predicate<T> inCollection(@NonNull Collection<T> collection) {
@@ -563,10 +521,10 @@ public class Functions {
     }
 
     public static <T> Function<List<T>, Integer> listIndexOf(T value) {
-        Predicate<List<T>> negate = negate(List::isEmpty);
+        Predicate<List<T>> nonEmpty = negate(List::isEmpty);
         Function<List<T>, Integer> indexOf = bindSecond(List::indexOf, value);
         return join(Optional::ofNullable,
-                bindSecond(Optional::filter, negate),
+                bindSecond(Optional::filter, nonEmpty),
                 bindSecond(Optional::map, indexOf),
                 bindSecond(Optional::orElse, -1));
     }
@@ -595,6 +553,14 @@ public class Functions {
     }
 
     public static Predicate<int[]> intsContains(int value) {
+        return pBindSecond(ArrayUtils::contains, value);
+    }
+
+    public static Predicate<long[]> longsContains(long value) {
+        return pBindSecond(ArrayUtils::contains, value);
+    }
+
+    public static Predicate<double[]> doublesContains(double value) {
         return pBindSecond(ArrayUtils::contains, value);
     }
 
