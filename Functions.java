@@ -90,6 +90,47 @@ public class Functions {
                 .orElseGet(Functions::empty);
     }
 
+    public static <T> Consumer<T> joinCC(@Nullable Collection<Consumer<T>> consumers) {
+        if (consumers == null || consumers.isEmpty()) {
+            return empty();
+        }
+        return consumers.stream()
+                .filter(Objects::nonNull)
+                .reduce(Consumer::andThen)
+                .orElseGet(Functions::empty);
+    }
+
+    @SafeVarargs
+    public static <T, R> Function<T, R> joinCS(@NonNull Supplier<R> supplier, @NonNull Consumer<T>... consumers) {
+        return t -> {
+            joinCC(consumers).accept(t);
+            return supplier.get();
+        };
+    }
+
+    @SafeVarargs
+    public static <T> UnaryOperator<T> c2f(@NonNull Consumer<T>... consumers) {
+        return t -> {
+            joinCC(consumers).accept(t);
+            return t;
+        };
+    }
+
+    public static <T> UnaryOperator<T> c2f(@Nullable Collection<Consumer<T>> consumers) {
+        return t -> {
+            joinCC(consumers).accept(t);
+            return t;
+        };
+    }
+
+    @SafeVarargs
+    public static <T, R> Function<T, R> joinCF(@NonNull Function<T, R> func, @NonNull Consumer<T>... consumers) {
+        return t -> {
+            joinCC(consumers).accept(t);
+            return func.apply(t);
+        };
+    }
+
     public static <T> Function<T, Boolean> p2F(Predicate<T> predicate) {
         return predicate::test;
     }
