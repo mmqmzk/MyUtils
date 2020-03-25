@@ -1,5 +1,7 @@
 package zk.util;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
 import com.google.common.collect.Streams;
 import lombok.NonNull;
 import org.apache.commons.lang3.ArrayUtils;
@@ -8,10 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.*;
-import java.util.stream.DoubleStream;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
-import java.util.stream.Stream;
+import java.util.stream.*;
 
 /**
  * Created by 周锟 on 2016/1/29 9:53.
@@ -131,12 +130,31 @@ public class Functions {
         };
     }
 
-    public static <T> Function<T, Boolean> p2F(Predicate<T> predicate) {
+    public static <T> Function<T, Boolean> p2F(@NonNull Predicate<T> predicate) {
         return predicate::test;
     }
 
-    public static <T> Predicate<T> f2P(Function<T, Boolean> func) {
+    public static <T> Predicate<T> f2P(@NonNull Function<T, Boolean> func) {
         return t -> Optional.ofNullable(func.apply(t)).orElse(Boolean.FALSE);
+    }
+
+    public static <T> Consumer<T> ifThen(@NonNull Predicate<T> predicate, @NonNull Consumer<T> thenFunc) {
+        return t -> {
+            if (predicate.test(t)) {
+                thenFunc.accept(t);
+            }
+        };
+    }
+
+    public static <T> Consumer<T> ifThenElse(@NonNull Predicate<T> predicate,
+                                             @NonNull Consumer<T> thenFunc, @NonNull Consumer<T> elseFunc) {
+        return t -> {
+            if (predicate.test(t)) {
+                thenFunc.accept(t);
+            } else {
+                elseFunc.accept(t);
+            }
+        };
     }
 
     public static <T> Supplier<T> constant(T value) {
@@ -336,20 +354,67 @@ public class Functions {
 
     @SafeVarargs
     public static <T> Predicate<T> or(@NonNull Predicate<? super T>... predicates) {
-        return t -> Arrays.stream(predicates).anyMatch(pBindSecond(Predicate::test, t));
+        if (predicates == null || predicates.length == 0) {
+            return alwaysFalse();
+        }
+        return t ->
+                Arrays.stream(predicates)
+                        .filter(Objects::nonNull)
+                        .anyMatch(pBindSecond(Predicate::test, t));
+    }
+
+    public static <T> Predicate<T> or(@Nullable Collection<Predicate<? super T>> predicates) {
+        if (predicates == null || predicates.isEmpty()) {
+            return alwaysFalse();
+        }
+        return t ->
+                predicates.stream()
+                        .filter(Objects::nonNull)
+                        .anyMatch(pBindSecond(Predicate::test, t));
     }
 
     @SafeVarargs
     public static <T> Predicate<T> and(@NonNull Predicate<? super T>... predicates) {
-        return t -> Arrays.stream(predicates).allMatch(pBindSecond(Predicate::test, t));
+        if (predicates == null || predicates.length == 0) {
+            return alwaysTrue();
+        }
+        return t ->
+                Arrays.stream(predicates)
+                        .filter(Objects::nonNull)
+                        .allMatch(pBindSecond(Predicate::test, t));
+    }
+
+    public static <T> Predicate<T> and(@Nullable Collection<Predicate<? super T>> predicates) {
+        if (predicates == null || predicates.isEmpty()) {
+            return alwaysTrue();
+        }
+        return t ->
+                predicates.stream()
+                        .filter(Objects::nonNull)
+                        .allMatch(pBindSecond(Predicate::test, t));
     }
 
     @SafeVarargs
     public static <T> Predicate<T> xor(@NonNull Predicate<? super T>... predicates) {
+        if (predicates == null || predicates.length == 0) {
+            return alwaysFalse();
+        }
         return t ->
                 Arrays.stream(predicates)
+                        .filter(Objects::nonNull)
                         .map(bindSecond(Predicate::test, t))
-                        .reduce(Boolean.TRUE, Boolean::logicalXor);
+                        .reduce(Boolean.FALSE, Boolean::logicalXor);
+    }
+
+    public static <T> Predicate<T> xor(@Nullable Collection<Predicate<? super T>> predicates) {
+        if (predicates == null || predicates.isEmpty()) {
+            return alwaysFalse();
+        }
+        return t ->
+                predicates.stream()
+                        .filter(Objects::nonNull)
+                        .map(bindSecond(Predicate::test, t))
+                        .reduce(Boolean.FALSE, Boolean::logicalXor);
     }
 
     public static <T, R> Function<T, R> sIgnoreFirst(@NonNull Supplier<R> supplier) {
@@ -389,15 +454,15 @@ public class Functions {
     }
 
     public static UnaryOperator<Integer> plusNBoxed(int n) {
-        return box(plusN(n));
+        return i -> i == null ? null : i + n;
     }
 
     public static IntUnaryOperator plusN(int n) {
-        return unBoxIU(bBindFirst(Integer::sum, n));
+        return i -> i + n;
     }
 
     public static UnaryOperator<Integer> negateBoxed() {
-        return box(negate());
+        return i -> i == null ? null : -i;
     }
 
     public static IntUnaryOperator negate() {
@@ -405,15 +470,15 @@ public class Functions {
     }
 
     public static UnaryOperator<Long> plusNBoxed(long n) {
-        return box(plusN(n));
+        return l -> l == null ? null : l + n;
     }
 
     public static LongUnaryOperator plusN(long n) {
-        return unBoxLU(bBindFirst(Long::sum, n));
+        return l -> l + n;
     }
 
     public static UnaryOperator<Long> negateLBoxed() {
-        return box(negateL());
+        return l -> l == null ? null : -l;
     }
 
     public static LongUnaryOperator negateL() {
@@ -421,15 +486,15 @@ public class Functions {
     }
 
     public static UnaryOperator<Double> plusNBoxed(double n) {
-        return box(plusN(n));
+        return d -> d == null ? null : d + n;
     }
 
     public static DoubleUnaryOperator plusN(double n) {
-        return unBoxDU(bBindFirst(Double::sum, n));
+        return d -> d + n;
     }
 
     public static UnaryOperator<Double> negateDBoxed() {
-        return box(negateD());
+        return d -> d == null ? null : -d;
     }
 
     public static DoubleUnaryOperator negateD() {
@@ -550,10 +615,16 @@ public class Functions {
     }
 
     public static <T> Predicate<T> inCollection(@NonNull Collection<T> collection) {
+        if (collection == null || collection.isEmpty()) {
+            return alwaysFalse();
+        }
         return pBindFirst(Collection::contains, collection);
     }
 
     public static <T> Predicate<T> inString(@NonNull String string) {
+        if (string == null) {
+            return alwaysFalse();
+        }
         return and(Objects::nonNull, joinP(Object::toString, pBindFirst(String::contains, string)));
     }
 
@@ -632,6 +703,24 @@ public class Functions {
         return join(splitBy(separator), Arrays::stream);
     }
 
+    public static Function<CharSequence, Iterable<String>> splitTo(@NonNull String separator) {
+        return Splitter.on(separator)::split;
+    }
+
+    public static Function<CharSequence, List<String>> splitToList(@NonNull String separator) {
+        return Splitter.on(separator)::splitToList;
+    }
+
+    public static Function<String, Map<String, String>> splitToMap(@NonNull String keyValueSeparator,
+                                                                   @NonNull String entrySeparator) {
+        Function<Stream<String>, Stream<List<String>>> func = Functions.bindSecond(Stream::map,
+                Functions.splitToList(keyValueSeparator));
+        Collector<List<String>, ?, Map<String, String>> collector = Collectors.toMap(
+                bindSecond(List::get, 0), bindSecond(List::get, 1));
+        Function<Stream<List<String>>, Map<String, String>> func2 = Functions.bindSecond(Stream::collect, collector);
+        return Functions.join(Functions.splitToStream(entrySeparator), func, func2);
+    }
+
     public static Function<Object[], String> arrayJoinBy(@NonNull String separator) {
         return bindSecond(StringUtils::join, separator);
     }
@@ -642,12 +731,7 @@ public class Functions {
 
     public static <T, V> Function<Map<T, V>, String> mapJoinBy(@NonNull String keyValueSeparator,
                                                                @NonNull String entrySeparator) {
-        return map ->
-                map.entrySet().stream()
-                        .map(entry ->
-                                entry.getKey() + keyValueSeparator + entry.getValue())
-                        .reduce(StringUtils.EMPTY, (t, c) ->
-                                t.isEmpty() ? c : t + entrySeparator + c);
+        return Joiner.on(entrySeparator).withKeyValueSeparator(keyValueSeparator)::join;
     }
 
     public static UnaryOperator<String> append(String suffix) {
