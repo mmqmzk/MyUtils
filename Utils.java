@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
@@ -23,7 +24,9 @@ import java.util.stream.Stream;
 /**
  * @author 周锟
  */
-public class Utils {
+@Slf4j
+public enum Utils {
+    ;
 
     public static String getStackTrace() {
         return getStackTrace(1, 10);
@@ -34,7 +37,7 @@ public class Utils {
             throw new IllegalArgumentException("start > stop");
         }
         StringBuilder builder = new StringBuilder((stop - start + 1) * 50);
-        StackTraceElement[] stackTrace = new Exception().getStackTrace();
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
         int length = 2;
         if (stackTrace.length < start + length) {
             return builder.toString();
@@ -108,6 +111,13 @@ public class Utils {
         return ThreadLocalRandom.current().nextInt(i);
     }
 
+    /**
+     * 结果包含最小最大数
+     *
+     * @param min
+     * @param max
+     * @return
+     */
     public static int random(int min, int max) {
         return nextInt(max - min + 1) + min;
     }
@@ -181,9 +191,9 @@ public class Utils {
             return stream.skip(random).findFirst();
         }
         TwoTuple<Integer, T> tuple = Tuple.tuple(random, null);
-        tuple = stream.reduce(tuple, (t, obj) ->
-                        t.getFirst() < 0 ? t : Tuple.tuple(t.getFirst() - getWeight(weigher, obj), obj),
-                BinaryOperator.minBy(orderingFromToIntFunction(TwoTuple::getFirst)));
+        BiFunction<TwoTuple<Integer, T>, T, TwoTuple<Integer, T>> accumulator = (t, obj) ->
+                t.getFirst() < 0 ? t : Tuple.tuple(t.getFirst() - getWeight(weigher, obj), obj);
+        tuple = Functions.foldSequential(stream, tuple, accumulator);
         return Optional.ofNullable(tuple.getSecond());
     }
 
@@ -317,7 +327,8 @@ public class Utils {
         return randomChooseN(collection, n, null);
     }
 
-    public static <T> List<T> randomChooseN(@Nullable Collection<T> collection, int n, @Nullable ToIntFunction<T> weigher) {
+    public static <T> List<T> randomChooseN(@Nullable Collection<T> collection, int n,
+                                            @Nullable ToIntFunction<T> weigher) {
         if (collection == null || collection.size() == 0 || n <= 0) {
             return Collections.emptyList();
         }
@@ -374,15 +385,21 @@ public class Utils {
         return randomRemoveN(collection, n, null);
     }
 
-    public static <T> List<T> randomRemoveN(@Nullable Collection<T> collection, int n, @Nullable ToIntFunction<T> weigher) {
+    public static <T> List<T> randomRemoveN(@Nullable Collection<T> collection, int n,
+                                            @Nullable ToIntFunction<T> weigher) {
         if (collection == null || collection.size() == 0 || n <= 0) {
             return Collections.emptyList();
+        }
+        List<T> result = Lists.newArrayListWithExpectedSize(n);
+        if (n >= collection.size()) {
+            result.addAll(collection);
+            collection.clear();
+            return result;
         }
         int total = calculateTotalWeight(collection, weigher);
         if (total <= 0) {
             return Collections.emptyList();
         }
-        List<T> result = Lists.newArrayListWithExpectedSize(n);
         for (; n > 0 && total > 0; n--) {
             int random = nextInt(total);
             for (Iterator<T> iterator = collection.iterator(); iterator.hasNext(); ) {
@@ -398,6 +415,10 @@ public class Utils {
             }
         }
         return result;
+    }
+
+    public static int get0(@Nullable int[] array) {
+        return get(array, 0);
     }
 
     public static int get(@Nullable int[] array, int index) {
@@ -418,6 +439,10 @@ public class Utils {
         return array[index];
     }
 
+    public static long get0(@Nullable long[] array) {
+        return get(array, 0);
+    }
+
     public static long get(@Nullable long[] array, int index) {
         return get(array, index, 0L);
     }
@@ -436,6 +461,10 @@ public class Utils {
         return array[index];
     }
 
+    public static double get0(@Nullable double[] array) {
+        return get(array, 0);
+    }
+
     public static double get(@Nullable double[] array, int index) {
         return get(array, index, 0.0);
     }
@@ -452,6 +481,10 @@ public class Utils {
             return defaultValue;
         }
         return array[index];
+    }
+
+    public static <T> T get0(@Nullable T[] array) {
+        return get(array, 0);
     }
 
     public static <T> T get(@Nullable T[] array, int index) {
@@ -473,6 +506,10 @@ public class Utils {
         return t == null ? defaultValue : t;
     }
 
+    public static <T> T get0(@Nullable Collection<T> collection) {
+        return get(collection, 0);
+    }
+
     public static <T> T get(@Nullable Collection<T> collection, int index) {
         return get(collection, index, null);
     }
@@ -490,6 +527,28 @@ public class Utils {
         }
         T t = Iterables.get(collection, index);
         return t == null ? defaultValue : t;
+    }
+
+    public static <T> T get0(Stream<T> stream) {
+        return get0(stream, null);
+    }
+
+    public static <T> T get0(Stream<T> stream, T defaultValue) {
+        if (stream == null) {
+            return defaultValue;
+        }
+        return stream.findFirst().orElse(defaultValue);
+    }
+
+    public static <T> T get(Stream<T> stream, int i) {
+        return get(stream, i, null);
+    }
+
+    public static <T> T get(Stream<T> stream, int i, T defaultValue) {
+        if (stream == null) {
+            return defaultValue;
+        }
+        return stream.skip(i).findFirst().orElse(defaultValue);
     }
 
     public static <T> Function<T[], T> arrayGetI(int i) {
@@ -518,7 +577,8 @@ public class Utils {
         return orderingFromFunction(function, Ordering.natural(), true);
     }
 
-    public static <T, R> Ordering<T> orderingFromFunction(@NonNull Function<T, Comparable<R>> function, boolean nullsFirst) {
+    public static <T, R> Ordering<T> orderingFromFunction(@NonNull Function<T, Comparable<R>> function,
+                                                          boolean nullsFirst) {
         return orderingFromFunction(function, Ordering.natural(), nullsFirst);
     }
 
@@ -670,11 +730,11 @@ public class Utils {
         return ints;
     }
 
-    public static int[] parseToInts(@Nullable String string, @NonNull String separator) {
-        if (string == null || separator == null) {
+    public static int[] parseToInts(@Nullable String data, @NonNull String separator) {
+        if (data == null || separator == null) {
             return new int[0];
         }
-        return parseToInts(string.trim().split(separator));
+        return parseToInts(data.trim().split(separator));
     }
 
     private static Number toNumber(Object object) {
@@ -687,9 +747,9 @@ public class Utils {
             Boolean aBoolean = (Boolean) object;
             return aBoolean ? 1 : 0;
         } else if (object instanceof BigInteger) {
-            return (BigInteger) object;
+            return (Number) object;
         } else if (object instanceof BigDecimal) {
-            return (BigDecimal) object;
+            return (Number) object;
         }
         return null;
     }
@@ -698,8 +758,8 @@ public class Utils {
         return Ints.saturatedCast(parseToLong(object));
     }
 
-    public static int parseToInt(@Nullable String string) {
-        return Ints.saturatedCast(parseToLong(string));
+    public static int parseToInt(@Nullable String data) {
+        return Ints.saturatedCast(parseToLong(data));
     }
 
     public static long parseToLong(@Nullable Object object) {
@@ -713,23 +773,23 @@ public class Utils {
         return parseToLong(object.toString());
     }
 
-    public static long parseToLong(@Nullable String string) {
-        if (string == null) {
+    public static long parseToLong(@Nullable String data) {
+        if (data == null) {
             return 0L;
         }
-        string = string.trim();
-        int length = string.length();
+        data = data.trim();
+        int length = data.length();
         if (length == 0) {
             return 0L;
         }
         int radix = 10;
-        if (string.charAt(0) == '0' && length > 1) {
-            char c = string.charAt(1);
+        if (data.charAt(0) == '0' && length > 1) {
+            char c = data.charAt(1);
             switch (c) {
                 case 'x':
                 case 'X':
                     if (length > 2) {
-                        string = string.substring(2);
+                        data = data.substring(2);
                     } else {
                         return 0L;
                     }
@@ -738,24 +798,24 @@ public class Utils {
                 case 'b':
                 case 'B':
                     if (length > 2) {
-                        string = string.substring(2);
+                        data = data.substring(2);
                     } else {
                         return 0L;
                     }
                     radix = 2;
                     break;
                 default:
-                    string = string.substring(1);
+                    data = data.substring(1);
                     radix = 8;
                     break;
             }
-            if (string.isEmpty()) {
+            if (data.isEmpty()) {
                 return 0L;
             }
         }
         Long aLong = null;
         try {
-            aLong = Long.parseLong(string, radix);
+            aLong = Long.parseLong(data, radix);
         } catch (Exception ignore) {
         }
         return aLong == null ? 0L : aLong;
@@ -772,17 +832,17 @@ public class Utils {
         return parseToDouble(object.toString());
     }
 
-    public static double parseToDouble(@Nullable String string) {
-        if (string == null) {
+    public static double parseToDouble(@Nullable String data) {
+        if (data == null) {
             return 0.0;
         }
-        string = string.trim();
+        data = data.trim();
         if (string.isEmpty()) {
             return 0.0;
         }
         Double aDouble = null;
         try {
-            aDouble = Double.parseDouble(string);
+            aDouble = Double.parseDouble(data);
         } catch (Exception ignore) {
         }
         return aDouble == null ? 0.0 : aDouble;
@@ -806,22 +866,22 @@ public class Utils {
     /**
      * true, yes, on(无视大小写),非0数返回true,其他情况返回false
      *
-     * @param string
+     * @param data
      * @return
      */
-    public static boolean parseToBoolean(@Nullable String string) {
-        if (string == null) {
+    public static boolean parseToBoolean(@Nullable String data) {
+        if (data == null) {
             return false;
         }
-        string = string.trim();
-        if (string.isEmpty()) {
+        data = data.trim();
+        if (data.isEmpty()) {
             return false;
         }
-        if (string.equalsIgnoreCase("true") || string.equalsIgnoreCase("yes") ||
-                string.equalsIgnoreCase("on")) {
+        if (data.equalsIgnoreCase("true") || data.equalsIgnoreCase("yes") ||
+                data.equalsIgnoreCase("on")) {
             return true;
         }
-        return parseToDouble(string) != 0;
+        return parseToDouble(data) != 0;
     }
 
     @Data

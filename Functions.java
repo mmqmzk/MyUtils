@@ -1,8 +1,8 @@
 package zk.util;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Streams;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -10,12 +10,14 @@ import org.apache.commons.lang3.StringUtils;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.*;
+import java.util.regex.Pattern;
 import java.util.stream.*;
 
 /**
  * Created by 周锟 on 2016/1/29 9:53.
  */
-public class Functions {
+public enum Functions {
+    ;
 
     public static <T> Consumer<T> empty() {
         return t -> {
@@ -28,56 +30,64 @@ public class Functions {
     }
 
     public static <T, V, R> Function<T, R> join(@NonNull Function<T, V> before,
-                                                @NonNull Function<V, R> after) {
+            @NonNull Function<V, R> after) {
         return before.andThen(after);
     }
 
     public static <T, U, V, R> Function<T, R> join(@NonNull Function<T, U> func1,
-                                                   @NonNull Function<U, V> func2,
-                                                   @NonNull Function<V, R> func3) {
+            @NonNull Function<U, V> func2,
+            @NonNull Function<V, R> func3) {
         return func1.andThen(func2).andThen(func3);
     }
 
     public static <T, U, V, W, R> Function<T, R> join(@NonNull Function<T, U> func1,
-                                                      @NonNull Function<U, V> func2,
-                                                      @NonNull Function<V, W> func3,
-                                                      @NonNull Function<W, R> func4) {
+            @NonNull Function<U, V> func2,
+            @NonNull Function<V, W> func3,
+            @NonNull Function<W, R> func4) {
         return func1.andThen(func2).andThen(func3).andThen(func4);
     }
 
     public static <T, V> Predicate<T> joinP(@NonNull Function<T, V> function,
-                                            @NonNull Predicate<V> predicate) {
+            @NonNull Predicate<V> predicate) {
         return t -> predicate.test(function.apply(t));
     }
 
     public static <T, U, V> Predicate<T> joinP(@NonNull Function<T, U> func1,
-                                               @NonNull Function<U, V> func2,
-                                               @NonNull Predicate<V> predicate) {
+            @NonNull Function<U, V> func2,
+            @NonNull Predicate<V> predicate) {
         return t -> predicate.test(func2.apply(func1.apply(t)));
     }
 
     public static <T, U, V, W> Predicate<T> joinP(@NonNull Function<T, U> func1,
-                                                  @NonNull Function<U, V> func2,
-                                                  @NonNull Function<V, W> func3,
-                                                  @NonNull Predicate<W> predicate) {
+            @NonNull Function<U, V> func2,
+            @NonNull Function<V, W> func3,
+            @NonNull Predicate<W> predicate) {
         return t -> predicate.test(func3.apply(func2.apply(func1.apply(t))));
     }
 
+    public static <T, U, V, W, X> Predicate<T> joinP(@NonNull Function<T, U> func1,
+            @NonNull Function<U, V> func2,
+            @NonNull Function<V, W> func3,
+            @NonNull Function<W, X> func4,
+            @NonNull Predicate<X> predicate) {
+        return t -> predicate.test(func4.apply(func3.apply(func2.apply(func1.apply(t)))));
+    }
+
     public static <T, R> Consumer<T> joinC(@NonNull Function<T, R> function,
-                                           @NonNull Consumer<R> consumer) {
+            @NonNull Consumer<R> consumer) {
         return t -> consumer.accept(function.apply(t));
     }
 
     public static <T, U, V> Consumer<T> joinC(@NonNull Function<T, U> func1,
-                                              @NonNull Function<U, V> func2,
-                                              @NonNull Consumer<V> consumer) {
+            @NonNull Function<U, V> func2,
+            @NonNull Consumer<V> consumer) {
         return t -> consumer.accept(func2.apply(func1.apply(t)));
     }
 
     public static <T, U, V, W> Consumer<T> joinC(@NonNull Function<T, U> func1,
-                                                 @NonNull Function<U, V> func2,
-                                                 @NonNull Function<V, W> func3,
-                                                 @NonNull Consumer<W> consumer) {
+            @NonNull Function<U, V> func2,
+            @NonNull Function<V, W> func3,
+            @NonNull Consumer<W> consumer) {
         return t -> consumer.accept(func3.apply(func2.apply(func1.apply(t))));
     }
 
@@ -107,6 +117,14 @@ public class Functions {
         };
     }
 
+    public static <T, R> Function<T, R> joinCS(@NonNull Supplier<R> supplier,
+            @NonNull Collection<Consumer<T>> consumers) {
+        return t -> {
+            joinCC(consumers).accept(t);
+            return supplier.get();
+        };
+    }
+
     @SafeVarargs
     public static <T> UnaryOperator<T> c2f(@NonNull Consumer<T>... consumers) {
         return t -> {
@@ -130,6 +148,14 @@ public class Functions {
         };
     }
 
+    public static <T, R> Function<T, R> joinCF(@NonNull Function<T, R> func,
+            @NonNull Collection<Consumer<T>> consumers) {
+        return t -> {
+            joinCC(consumers).accept(t);
+            return func.apply(t);
+        };
+    }
+
     public static <T> Function<T, Boolean> p2F(@NonNull Predicate<T> predicate) {
         return predicate::test;
     }
@@ -147,7 +173,7 @@ public class Functions {
     }
 
     public static <T> Consumer<T> ifThenElse(@NonNull Predicate<T> predicate,
-                                             @NonNull Consumer<T> thenFunc, @NonNull Consumer<T> elseFunc) {
+            @NonNull Consumer<T> thenFunc, @NonNull Consumer<T> elseFunc) {
         return t -> {
             if (predicate.test(t)) {
                 thenFunc.accept(t);
@@ -187,6 +213,10 @@ public class Functions {
 
     public static <T, R> Function<T, R> always(R value) {
         return t -> value;
+    }
+
+    public static <T> UnaryOperator<T> identity() {
+        return t -> t;
     }
 
     public static <T> Predicate<T> equal(T t) {
@@ -244,7 +274,6 @@ public class Functions {
     public static <T> Supplier<T> uBindFirst(@NonNull UnaryOperator<T> func, T first) {
         return () -> func.apply(first);
     }
-
 
     public static <T, V> Consumer<V> cBindFirst(@NonNull BiConsumer<T, V> func, T first) {
         return v -> func.accept(first, v);
@@ -331,7 +360,7 @@ public class Functions {
         } else {
             stream = collection.stream();
         }
-        return Streams.concat(stream, Arrays.stream(values));
+        return Stream.concat(stream, Arrays.stream(values));
     }
 
     @SafeVarargs
@@ -345,7 +374,7 @@ public class Functions {
         } else {
             stream = Arrays.stream(array);
         }
-        return Streams.concat(stream, Arrays.stream(values));
+        return Stream.concat(stream, Arrays.stream(values));
     }
 
     public static <T> Predicate<T> negate(@NonNull Predicate<T> predicate) {
@@ -426,6 +455,14 @@ public class Functions {
     }
 
     public static <T, V, R> BiFunction<T, V, R> ignoreSecond(@NonNull Function<T, R> func) {
+        return (t, v) -> func.apply(t);
+    }
+
+    public static <T> BinaryOperator<T> bIgnoreFirst(@NonNull UnaryOperator<T> func) {
+        return (t, v) -> func.apply(v);
+    }
+
+    public static <T> BinaryOperator<T> bIgnoreSecond(@NonNull UnaryOperator<T> func) {
         return (t, v) -> func.apply(t);
     }
 
@@ -614,50 +651,52 @@ public class Functions {
         return unBoxDP(pBindFirst(ArrayUtils::contains, array));
     }
 
-    public static <T> Predicate<T> inCollection(@NonNull Collection<T> collection) {
+    public static <T> Predicate<T> inCollection(@Nullable Collection<T> collection) {
         if (collection == null || collection.isEmpty()) {
             return alwaysFalse();
         }
         return pBindFirst(Collection::contains, collection);
     }
 
-    public static <T> Predicate<T> inString(@NonNull String string) {
-        if (string == null) {
+    public static <T> Predicate<T> inString(@Nullable String str) {
+        if (str == null) {
             return alwaysFalse();
         }
-        return and(Objects::nonNull, joinP(Object::toString, pBindFirst(String::contains, string)));
+        return and(Objects::nonNull, joinP(Object::toString, pBindFirst(String::contains, str)));
     }
 
-    public static <T> Function<T[], Integer> arrayIndexOf(T value) {
-        return bindSecond(ArrayUtils::indexOf, value);
+    public static <T> Predicate<T> inStringIgnoreCase(@Nullable String str) {
+        if (str == null) {
+            return alwaysFalse();
+        }
+        return and(Objects::nonNull, joinP(Object::toString, pBindFirst(StringUtils::containsIgnoreCase, str)));
     }
 
-    public static <T> Function<List<T>, Integer> listIndexOf(T value) {
-        Predicate<List<T>> nonEmpty = negate(List::isEmpty);
-        Function<List<T>, Integer> indexOf = bindSecond(List::indexOf, value);
-        return join(Optional::ofNullable,
-                bindSecond(Optional::filter, nonEmpty),
-                bindSecond(Optional::map, indexOf),
-                bindSecond(Optional::orElse, -1));
+    public static <T> ToIntFunction<T[]> indexOf(@Nullable T value) {
+        return array -> ArrayUtils.indexOf(array, value);
     }
 
-    public static <T> Function<String, Integer> stringIndexOf(T value) {
+    public static <T> ToIntFunction<List<T>> listIndexOf(@Nullable T value) {
+        return list -> list == null || list.isEmpty() ? -1 : list.indexOf(value);
+    }
+
+    public static Function<String, Integer> stringIndexOf(Object value) {
         if (value == null) {
             return always(-1);
         }
         return bindSecond(StringUtils::indexOf, String.valueOf(value));
     }
 
-    public static Function<int[], Integer> intsIndexOf(int value) {
-        return bindSecond(ArrayUtils::indexOf, value);
+    public static ToIntFunction<int[]> indexOf(int value) {
+        return array -> ArrayUtils.indexOf(array, value);
     }
 
-    public static Function<long[], Integer> longIndexOf(long value) {
-        return bindSecond(ArrayUtils::indexOf, value);
+    public static ToIntFunction<long[]> indexOf(long value) {
+        return array -> ArrayUtils.indexOf(array, value);
     }
 
-    public static Function<double[], Integer> doubleIndexOf(double value) {
-        return bindSecond(ArrayUtils::indexOf, value);
+    public static ToIntFunction<double[]> indexOf(double value) {
+        return array -> ArrayUtils.indexOf(array, value);
     }
 
     public static <T> Predicate<T[]> arrayContains(T value) {
@@ -676,18 +715,18 @@ public class Functions {
         return pBindSecond(ArrayUtils::contains, value);
     }
 
-    public static <T> Predicate<Collection<T>> collectionContains(T value) {
+    public static <T> Predicate<Collection<T>> collectionContains(@Nullable T value) {
         return and(Objects::nonNull, negate(Collection::isEmpty), pBindSecond(Collection::contains, value));
     }
 
-    public static <T> Predicate<String> stringContains(T value) {
+    public static Predicate<String> stringContains(@Nullable Object value) {
         if (value == null) {
             return alwaysFalse();
         }
         return pBindSecond(StringUtils::contains, String.valueOf(value));
     }
 
-    public static Predicate<Collection<String>> containsIgnoreCase(String value) {
+    public static Predicate<Collection<String>> containsIgnoreCase(@Nullable String value) {
         if (value == null) {
             return alwaysFalse();
         }
@@ -695,43 +734,90 @@ public class Functions {
                 joinP(Collection::stream, pBindSecond(Stream::anyMatch, pBindFirst(String::equalsIgnoreCase, value))));
     }
 
-    public static Function<String, String[]> splitBy(@NonNull String separator) {
-        return bindSecond(String::split, separator);
+    public static BinaryOperator<String> stringJoinBy(@Nullable String separator) {
+        String sep = separator == null ? StringUtils.EMPTY : separator;
+        return (t, s) -> t + sep + s;
     }
 
-    public static Function<String, Stream<String>> splitToStream(@NonNull String separator) {
-        return join(splitBy(separator), Arrays::stream);
+    public static Function<String, String[]> splitBy(@Nullable String separator) {
+        if (separator == null) {
+            separator = StringUtils.EMPTY;
+        }
+        Pattern pattern = Pattern.compile(separator);
+        return pattern::split;
     }
 
-    public static Function<CharSequence, Iterable<String>> splitTo(@NonNull String separator) {
-        return Splitter.on(separator)::split;
+    public static BiFunction<String, Integer, String[]> splitWithLimit(@Nullable String separator) {
+        if (separator == null) {
+            separator = StringUtils.EMPTY;
+        }
+        Pattern pattern = Pattern.compile(separator);
+        return pattern::split;
     }
 
-    public static Function<CharSequence, List<String>> splitToList(@NonNull String separator) {
-        return Splitter.on(separator)::splitToList;
+    public static Function<String, Stream<String>> splitToStream(@Nullable String separator) {
+        if (separator == null) {
+            separator = StringUtils.EMPTY;
+        }
+        Pattern pattern = Pattern.compile(separator);
+        return join(pattern::split, Arrays::stream);
     }
 
-    public static Function<String, Map<String, String>> splitToMap(@NonNull String keyValueSeparator,
-                                                                   @NonNull String entrySeparator) {
-        Function<Stream<String>, Stream<List<String>>> func = Functions.bindSecond(Stream::map,
-                Functions.splitToList(keyValueSeparator));
-        Collector<List<String>, ?, Map<String, String>> collector = Collectors.toMap(
-                bindSecond(List::get, 0), bindSecond(List::get, 1));
-        Function<Stream<List<String>>, Map<String, String>> func2 = Functions.bindSecond(Stream::collect, collector);
-        return Functions.join(Functions.splitToStream(entrySeparator), func, func2);
+    public static Function<CharSequence, List<String>> splitToList(@Nullable String separator) {
+        if (separator == null) {
+            separator = StringUtils.EMPTY;
+        }
+        Pattern pattern = Pattern.compile(separator);
+        return input -> {
+            if (input == null) {
+                return Collections.emptyList();
+            }
+            return pattern.splitAsStream(input).collect(Collectors.toList());
+        };
     }
 
-    public static Function<Object[], String> arrayJoinBy(@NonNull String separator) {
+    public static Function<String, Map<String, String>> splitToMap(
+            @Nullable String keyValueSeparator,
+            @Nullable String entrySeparator) {
+        if (keyValueSeparator == null) {
+            keyValueSeparator = StringUtils.EMPTY;
+        }
+        Pattern kvPattern = Pattern.compile(keyValueSeparator);
+        if (entrySeparator == null) {
+            entrySeparator = StringUtils.EMPTY;
+        }
+        Pattern entryPattern = Pattern.compile(entrySeparator);
+        Function<Stream<String>, String> keyFunc = bindSecond(Functions::first, StringUtils.EMPTY);
+        Function<Stream<String>, String> valueFunc = bindSecond(Functions::second, StringUtils.EMPTY);
+        return input -> {
+            if (input == null || input.isEmpty()) {
+                return Collections.emptyMap();
+            }
+            return entryPattern.splitAsStream(input)
+                    .map(kvPattern::splitAsStream)
+                    .collect(Collectors.toMap(keyFunc, valueFunc, bSecondArg()));
+        };
+    }
+
+    public static Function<Object[], String> arrayJoinBy(@Nullable String separator) {
         return bindSecond(StringUtils::join, separator);
     }
 
-    public static <T> Function<Iterable<T>, String> iterableJoinBy(@NonNull String separator) {
+    public static <T> Function<Iterable<T>, String> iterableJoinBy(@Nullable String separator) {
         return bindSecond(StringUtils::join, separator);
     }
 
-    public static <T, V> Function<Map<T, V>, String> mapJoinBy(@NonNull String keyValueSeparator,
-                                                               @NonNull String entrySeparator) {
-        return Joiner.on(entrySeparator).withKeyValueSeparator(keyValueSeparator)::join;
+    public static <T, V> Function<Map<T, V>, String> mapJoinBy(
+            @NonNull String keyValueSeparator,
+            @NonNull String entrySeparator) {
+        return map -> {
+            if (map == null || map.isEmpty()) {
+                return StringUtils.EMPTY;
+            }
+            return map.entrySet().stream()
+                    .map(entry -> entry.getKey() + keyValueSeparator + entry.getValue())
+                    .collect(Collectors.joining(entrySeparator));
+        };
     }
 
     public static UnaryOperator<String> append(String suffix) {
@@ -742,37 +828,34 @@ public class Functions {
         return bBindFirst(String::concat, prefix);
     }
 
-    public static <T> Stream<T> reverse(@NonNull Stream<T> stream) {
+    public static <T> Stream<T> reverse(@Nullable Stream<T> stream) {
+        if (stream == null) {
+            return Stream.empty();
+        }
         Deque<T> deque = new ArrayDeque<>();
-        stream.forEachOrdered(deque::addFirst);
-        return deque.stream();
+        stream.sequential().forEachOrdered(deque::addFirst);
+        return deque.stream().sequential();
     }
 
-    public static IntStream reverse(@NonNull IntStream stream) {
-        Deque<Integer> deque = new ArrayDeque<>();
-        stream.boxed().forEachOrdered(deque::addFirst);
-        return deque.stream().mapToInt(Integer::intValue);
+    public static IntStream reverse(@Nullable IntStream stream) {
+        return reverse(stream.boxed()).mapToInt(Integer::intValue);
     }
 
-    public static LongStream reverse(@NonNull LongStream stream) {
-        Deque<Long> deque = new ArrayDeque<>();
-        stream.boxed().forEachOrdered(deque::addFirst);
-        return deque.stream().mapToLong(Long::longValue);
+    public static LongStream reverse(@Nullable LongStream stream) {
+        return reverse(stream.boxed()).mapToLong(Long::longValue);
     }
 
-    public static DoubleStream reverse(@NonNull DoubleStream stream) {
-        Deque<Double> deque = new LinkedList<>();
-        stream.boxed().forEachOrdered(deque::addFirst);
-        return deque.stream().mapToDouble(Double::doubleValue);
+    public static DoubleStream reverse(@Nullable DoubleStream stream) {
+        return reverse(stream.boxed()).mapToDouble(Double::doubleValue);
     }
 
-    public static <T> Stream<T> reverseStream(Collection<T> collection) {
+    public static <T> Stream<T> reverseStream(@Nullable Collection<T> collection) {
         if (collection == null || collection.isEmpty()) {
             return Stream.empty();
         }
         Deque<T> deque = new ArrayDeque<>(collection.size());
-        collection.forEach(deque::addFirst);
-        return deque.stream();
+        collection.stream().sequential().forEach(deque::addFirst);
+        return deque.stream().sequential();
     }
 
     @SafeVarargs
@@ -781,7 +864,7 @@ public class Functions {
             return Stream.empty();
         }
         ArrayUtils.reverse(Arrays.copyOf(array, array.length));
-        return Arrays.stream(array);
+        return Arrays.stream(array).sequential();
     }
 
     public static IntStream reverseStream(int... array) {
@@ -789,7 +872,7 @@ public class Functions {
             return IntStream.empty();
         }
         ArrayUtils.reverse(Arrays.copyOf(array, array.length));
-        return Arrays.stream(array);
+        return Arrays.stream(array).sequential();
     }
 
     public static LongStream reverseStream(long... array) {
@@ -797,7 +880,7 @@ public class Functions {
             return LongStream.empty();
         }
         ArrayUtils.reverse(Arrays.copyOf(array, array.length));
-        return Arrays.stream(array);
+        return Arrays.stream(array).sequential();
     }
 
     public static DoubleStream reverseStream(double... array) {
@@ -805,7 +888,7 @@ public class Functions {
             return DoubleStream.empty();
         }
         ArrayUtils.reverse(Arrays.copyOf(array, array.length));
-        return Arrays.stream(array);
+        return Arrays.stream(array).sequential();
     }
 
     public static <R> IntFunction<R> unBoxI(@NonNull Function<Integer, R> func) {
@@ -902,5 +985,130 @@ public class Functions {
 
     public static Predicate<Double> box(@NonNull DoublePredicate predicate) {
         return and(Objects::nonNull, predicate::test);
+    }
+
+    public static <T, R> Optional<R> foldSequential(Stream<T> stream, BiFunction<R, T, R> accumulator) {
+        return Optional.ofNullable(foldSequential(stream, null, accumulator));
+    }
+
+    public static <T, R> R foldSequential(Stream<T> stream, R identity, BiFunction<R, T, R> accumulator) {
+        if (stream == null) {
+            return identity;
+        }
+        return fold(stream.sequential(), identity, accumulator, bFirstArg());
+    }
+
+    public static <T, R> Optional<R> fold(Stream<T> stream,
+            BiFunction<R, T, R> accumulator, BinaryOperator<R> selector) {
+        return Optional.ofNullable(fold(stream, null, accumulator, selector));
+    }
+
+    public static <T, R> R fold(Stream<T> stream, R identity,
+            BiFunction<R, T, R> accumulator, BinaryOperator<R> selector) {
+        if (stream == null) {
+            return identity;
+        }
+        Holder<R> holder = new Holder<>(identity);
+        BiFunction<Holder<R>, T, Holder<R>> wrapAccumulator = (h, t) ->
+                new Holder<>(accumulator.apply(h.getValue(), t));
+        BinaryOperator<Holder<R>> combiner = (h1, h2) ->
+                h1.setValue(selector.apply(h1.getValue(), h2.getValue()));
+        return stream.reduce(holder, wrapAccumulator, combiner).getValue();
+    }
+
+    public static <T, V> BiFunction<T, V, T> firstArg() {
+        return (t, v) -> t;
+    }
+
+    public static <T> BinaryOperator<T> bFirstArg() {
+        return (t, v) -> t;
+    }
+
+    public static <T, V> BiFunction<T, V, V> secondArg() {
+        return (t, v) -> v;
+    }
+
+    public static <T> BinaryOperator<T> bSecondArg() {
+        return (v, t) -> t;
+    }
+
+    public static <T> Optional<T> first(Stream<T> stream) {
+        if (stream == null) {
+            return Optional.empty();
+        }
+        return stream.findFirst();
+    }
+
+    public static <T> Optional<T> second(Stream<T> stream) {
+        if (stream == null) {
+            return Optional.empty();
+        }
+        return stream.skip(1).findFirst();
+    }
+
+    public static <T> Optional<T> third(Stream<T> stream) {
+        if (stream == null) {
+            return Optional.empty();
+        }
+        return stream.skip(2).findFirst();
+    }
+
+    public static <T> Optional<T> nth(Stream<T> stream, int n) {
+        if (stream == null) {
+            return Optional.empty();
+        }
+        return stream.skip(n - 1).findFirst();
+    }
+
+    public static <T> T first(Stream<T> stream, T defaultValue) {
+        return first(stream).orElse(defaultValue);
+    }
+
+    public static <T> T second(Stream<T> stream, T defaultValue) {
+        return second(stream).orElse(defaultValue);
+    }
+
+    public static <T> T third(Stream<T> stream, T defaultValue) {
+        return third(stream).orElse(defaultValue);
+    }
+
+    public static <T> T nth(Stream<T> stream, int n, T defaultValue) {
+        return nth(stream, n).orElse(defaultValue);
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    private static final class Holder<T> implements
+                                         UnaryOperator<T>, Consumer<T>,
+                                         Supplier<T>, Predicate<Object> {
+        private T value;
+
+        public Holder<T> setValue(T value) {
+            this.value = value;
+            return this;
+        }
+
+        @Override
+        public T apply(T t) {
+            T oldValue = value;
+            value = t;
+            return oldValue;
+        }
+
+        @Override
+        public void accept(T t) {
+            setValue(t);
+        }
+
+        @Override
+        public T get() {
+            return value;
+        }
+
+        @Override
+        public boolean test(Object o) {
+            return value != null;
+        }
     }
 }

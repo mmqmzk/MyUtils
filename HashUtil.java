@@ -68,6 +68,10 @@ public enum HashUtil {
                 + (urlEncode ? urlEncode(String.valueOf(entry.getValue())) : entry.getValue());
     }
 
+    public static Function<Entry<String, Object>, String> entryValueToString() {
+        return Functions.join(Entry::getValue, String::valueOf);
+    }
+
     public static Predicate<Entry<String, Object>> filterByNotContains(Collection<String> keys) {
         return Functions.joinP(Entry<String, Object>::getKey, keys::contains).negate();
     }
@@ -83,55 +87,55 @@ public enum HashUtil {
     public abstract String hash(byte[] data);
 
     public String sign(String prefix, String separator, String suffix, Object... args) {
-        return signCommon(Arrays.stream(args), Functions.always(true),
+        return signCommon(Arrays.stream(args), Functions.alwaysTrue(),
                 null, String::valueOf, stringJoiner(separator), prefix, suffix);
     }
 
-    public String signMap(String sign, Map<String, Object> map,
-                          Set<String> excludeKeys, String prefix, String suffix) {
+    public String signMap(Map<String, Object> map,
+            Set<String> excludeKeys, String prefix, String suffix) {
         return signMap(map, excludeKeys, Symbol.DENGHAO, prefix, Symbol.AND, suffix, false);
     }
 
     public String signMap(Map<String, Object> map,
-                          Set<String> excludeKeys, String kvSeparator,
-                          String prefix, String separator, String suffix, boolean urlEncode) {
+            Set<String> excludeKeys, String kvSeparator,
+            String prefix, String separator, String suffix, boolean urlEncode) {
         return signMap(map, excludeKeys, entryToString(kvSeparator, urlEncode), prefix, separator, suffix);
     }
 
     public String signMap(Map<String, Object> map, Set<String> excludeKeys,
-                          Function<Entry<String, Object>, String> toString, String prefix,
-                          String separator, String suffix) {
+            Function<Entry<String, Object>, String> toString, String prefix,
+            String separator, String suffix) {
         Comparator<Entry<String, Object>> comparator = Entry.comparingByKey();
         return signCommon(map.entrySet().stream(),
-                filterByNotContains(excludeKeys), comparator, toString, stringJoiner(Symbol.AND), prefix, suffix);
+                filterByNotContains(excludeKeys), comparator, toString, stringJoiner(separator), prefix, suffix);
     }
 
     public String signExplicit(Map<String, Object> map, List<String> keys,
-                               Function<Entry<String, Object>, String> toString, String prefix,
-                               String separator, String suffix) {
+            Function<Entry<String, Object>, String> toString, String prefix,
+            String separator, String suffix) {
         Ordering<Entry<String, Object>> comparator = Ordering.explicit(keys).onResultOf(Entry::getKey);
         return signCommon(map.entrySet().stream(),
-                Functions.joinP(Entry::getKey, Utils.inCollection(keys)),
+                Functions.joinP(Entry::getKey, Functions.inCollection(keys)),
                 comparator, toString, stringJoiner(separator), prefix, suffix);
     }
 
     public <T> String signCommon(Collection<T> elements,
-                                 Predicate<T> predicate, Comparator<T> comparator,
-                                 Function<T, String> toString, BinaryOperator<String> joiner, String suffix) {
+            Predicate<T> predicate, Comparator<T> comparator,
+            Function<T, String> toString, BinaryOperator<String> joiner, String suffix) {
         return signCommon(elements.stream(), predicate, comparator, toString, joiner, "", suffix);
     }
 
     public <T> String signCommon(Stream<T> elements, Predicate<T> predicate,
-                                 Comparator<T> comparator, Function<T, String> toString,
-                                 BinaryOperator<String> joiner, String prefix, String suffix) {
+            Comparator<T> comparator, Function<T, String> toString,
+            BinaryOperator<String> joiner, String prefix, String suffix) {
         Stream<T> stream = elements.filter(predicate);
         if (comparator != null) {
             stream = stream.sorted(comparator);
         }
         return stream.map(toString)
                 .reduce(joiner)
-                .map(Utils.prepend(prefix))
-                .map(Utils.append(suffix))
+                .map(Functions.prepend(prefix))
+                .map(Functions.append(suffix))
                 .map(this::hash)
                 .orElse(StringUtils.EMPTY);
     }
